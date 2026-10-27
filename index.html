@@ -3,6 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <base target="_top">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover">
+  <title>대치노인복지관 사회교육프로그램 강의평가</title>
+  <meta name="theme-color" content="#1f3864">
+  <meta property="og:title" content="사회교육프로그램 강의평가">
+  <meta property="og:description" content="대치노인복지관 사회교육프로그램 강의평가입니다. 약 5분 걸립니다.">
+  <meta property="og:type" content="website">
   <link rel="preconnect" href="https://script.google.com" crossorigin>
   <link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>
   <style>
@@ -20,14 +26,14 @@
     --warn: #b2540d;
     --bad: #b3261e;
     --radius: 14px;
-    --base: 19px;
+    --base: 21px;
   }
 
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
   html { font-size: var(--base); }
-  html[data-fs="2"] { --base: 22px; }
-  html[data-fs="3"] { --base: 26px; }
+  html[data-fs="2"] { --base: 25px; }
+  html[data-fs="3"] { --base: 30px; }
 
   body {
     margin: 0;
@@ -36,8 +42,10 @@
     font-family: "Malgun Gothic", "맑은 고딕", "Apple SD Gothic Neo",
                  "Noto Sans KR", system-ui, sans-serif;
     font-size: 1rem;
-    line-height: 1.6;
+    line-height: 1.65;
     -webkit-text-size-adjust: 100%;
+    overflow-wrap: break-word;
+    word-break: keep-all;
   }
 
   .wrap { max-width: 620px; margin: 0 auto; padding: 0 0 0.5rem; }
@@ -49,28 +57,28 @@
     padding: 0.7rem 0.9rem 0.6rem;
   }
   .topbar-inner { max-width: 620px; margin: 0 auto; }
-  .topbar h1 { margin: 0; font-size: 1.05rem; font-weight: 700; line-height: 1.35; }
-  .topbar .round { font-size: 0.8rem; opacity: 0.85; margin-top: 2px; }
+  .topbar h1 { margin: 0; font-size: 1.15rem; font-weight: 700; line-height: 1.35; }
+  .topbar .round { font-size: 0.92rem; opacity: 0.85; margin-top: 2px; }
 
   .fsbar { display: flex; gap: 6px; align-items: center; margin-top: 8px; }
-  .fsbar span { font-size: 0.78rem; opacity: 0.85; margin-right: 2px; }
+  .fsbar span { font-size: 0.9rem; opacity: 0.85; margin-right: 2px; }
   .fsbtn {
     background: rgba(255,255,255,0.14); color: #fff;
     border: 1px solid rgba(255,255,255,0.45);
-    border-radius: 8px; padding: 3px 11px; cursor: pointer;
+    border-radius: 8px; padding: 7px 15px; cursor: pointer;
     font-family: inherit; line-height: 1.2;
   }
   .fsbtn[aria-pressed="true"] { background: #fff; color: var(--navy); font-weight: 700; }
-  .fsbtn.s1 { font-size: 0.8rem; }
-  .fsbtn.s2 { font-size: 0.95rem; }
-  .fsbtn.s3 { font-size: 1.15rem; }
+  .fsbtn.s1 { font-size: 0.92rem; }
+  .fsbtn.s2 { font-size: 1.12rem; }
+  .fsbtn.s3 { font-size: 1.38rem; }
 
   /* ---------- 진행 표시 ---------- */
   .progress { background: #c9d4e8; height: 8px; }
   .progress > i { display: block; height: 100%; background: var(--navy-700); width: 0; transition: width .25s ease; }
   .stepinfo {
     max-width: 620px; margin: 0 auto; padding: 0.5rem 0.9rem 0;
-    font-size: 0.85rem; color: var(--muted); font-weight: 600;
+    font-size: 1rem; color: var(--muted); font-weight: 600;
   }
 
   /* ---------- 카드 ---------- */
@@ -80,14 +88,14 @@
     padding: 1.1rem 1rem; box-shadow: 0 1px 3px rgba(20,35,70,0.06);
   }
   .card h2 {
-    margin: 0 0 0.2rem; font-size: 1.15rem; color: var(--navy);
+    margin: 0 0 0.2rem; font-size: 1.25rem; color: var(--navy);
     border-left: 5px solid var(--navy-700); padding-left: 0.55rem; line-height: 1.4;
   }
-  .card .sub { color: var(--muted); font-size: 0.88rem; margin: 0.35rem 0 0; }
+  .card .sub { color: var(--muted); font-size: 1rem; margin: 0.35rem 0 0; }
 
   .notice {
     background: var(--navy-50); border: 1px solid var(--navy-100);
-    border-radius: 10px; padding: 0.85rem 0.9rem; font-size: 0.93rem; line-height: 1.65;
+    border-radius: 10px; padding: 0.95rem 1rem; font-size: 1.02rem; line-height: 1.7;
   }
   .notice b { color: var(--navy); }
   .notice ul { margin: 0.5rem 0 0; padding-left: 1.1rem; }
@@ -97,23 +105,23 @@
   .q { margin-top: 1.5rem; }
   .q:first-of-type { margin-top: 0.9rem; }
   .q > .label {
-    font-weight: 700; font-size: 1.04rem; line-height: 1.5;
+    font-weight: 700; font-size: 1.12rem; line-height: 1.55;
     display: flex; gap: 0.45rem; align-items: baseline;
   }
   .q > .label .num {
-    flex: none; min-width: 1.9rem; height: 1.9rem;
+    flex: none; min-width: 2.1rem; height: 2.1rem;
     background: var(--navy-700); color: #fff; border-radius: 50%;
-    font-size: 0.82rem; display: inline-flex; align-items: center;
+    font-size: 0.95rem; display: inline-flex; align-items: center;
     justify-content: center; font-weight: 700;
   }
-  .q .hint { color: var(--warn); font-size: 0.86rem; margin: 0.3rem 0 0 2.35rem; }
+  .q .hint { color: var(--warn); font-size: 0.98rem; margin: 0.3rem 0 0 2.35rem; }
   .req { color: var(--bad); margin-left: 2px; }
 
   /* ---------- 입력 ---------- */
   input[type="text"], input[type="tel"], textarea, select {
-    width: 100%; font-family: inherit; font-size: 1rem; color: var(--text);
+    width: 100%; font-family: inherit; font-size: 1.05rem; color: var(--text);
     border: 2px solid var(--line); border-radius: 10px;
-    padding: 0.7rem 0.75rem; background: #fff; margin-top: 0.5rem;
+    padding: 0.85rem 0.8rem; background: #fff; margin-top: 0.5rem;
   }
   textarea { min-height: 6.5rem; resize: vertical; line-height: 1.6; }
   input:focus, textarea:focus, select:focus {
@@ -127,14 +135,14 @@
 
   .opt {
     display: flex; align-items: center; gap: 0.7rem;
-    min-height: 3.1rem; padding: 0.6rem 0.85rem;
+    min-height: 3.5rem; padding: 0.75rem 0.9rem;
     border: 2px solid var(--line); border-radius: 12px;
-    background: #fff; cursor: pointer; font-size: 1rem;
+    background: #fff; cursor: pointer; font-size: 1.05rem;
     font-family: inherit; text-align: left; width: 100%;
     color: var(--text); line-height: 1.4;
   }
   .opt .dot {
-    flex: none; width: 1.35rem; height: 1.35rem; border-radius: 50%;
+    flex: none; width: 1.5rem; height: 1.5rem; border-radius: 50%;
     border: 2px solid #9aa8c2; background: #fff; position: relative;
   }
   .opt[aria-pressed="true"] {
@@ -145,23 +153,23 @@
     content: ""; position: absolute; inset: 3px;
     border-radius: 50%; background: var(--navy-700);
   }
-  .opt .meta { color: var(--muted); font-size: 0.84rem; font-weight: 400; }
+  .opt .meta { color: var(--muted); font-size: 0.95rem; font-weight: 400; }
   .opt .tagok, .opt .tagredo {
     display: inline-block; border-radius: 6px; padding: 0.05rem 0.4rem;
-    font-size: 0.75rem; font-weight: 700; margin-left: 0.2rem; white-space: nowrap;
+    font-size: 0.88rem; font-weight: 700; margin-left: 0.2rem; white-space: nowrap;
   }
   .opt .tagok { background: #dcf0e4; color: var(--ok); }
   .opt .tagredo { background: #fdeadd; color: var(--warn); }
 
   .q.invalid > .label { color: var(--bad); }
   .q.invalid .opts .opt, .q.invalid input, .q.invalid textarea { border-color: #e8a7a2; }
-  .errmsg { color: var(--bad); font-size: 0.88rem; margin-top: 0.4rem; font-weight: 600; display: none; }
+  .errmsg { color: var(--bad); font-size: 1rem; margin-top: 0.4rem; font-weight: 600; display: none; }
   .q.invalid .errmsg { display: block; }
 
   /* ---------- 프로그램 선택 ---------- */
   .daygroup { margin-top: 1.1rem; }
   .daygroup > h3 {
-    margin: 0 0 0.5rem; font-size: 0.95rem; color: var(--navy);
+    margin: 0 0 0.5rem; font-size: 1.08rem; color: var(--navy);
     background: var(--navy-100); border-radius: 8px;
     padding: 0.3rem 0.65rem; display: inline-block;
   }
@@ -175,8 +183,8 @@
   }
   .navbar-inner { max-width: 620px; margin: 0 auto; display: flex; gap: 0.6rem; }
   .btn {
-    flex: 1; min-height: 3.3rem; border-radius: 12px; border: 2px solid var(--navy-700);
-    font-family: inherit; font-size: 1.05rem; font-weight: 700; cursor: pointer;
+    flex: 1; min-height: 3.7rem; border-radius: 12px; border: 2px solid var(--navy-700);
+    font-family: inherit; font-size: 1.15rem; font-weight: 700; cursor: pointer;
     background: var(--navy-700); color: #fff; line-height: 1.3;
   }
   .btn.ghost { background: #fff; color: var(--navy-700); }
@@ -189,7 +197,7 @@
   .review dl { margin: 0; }
   .review .row {
     display: flex; gap: 0.7rem; padding: 0.55rem 0;
-    border-bottom: 1px dashed var(--line); font-size: 0.95rem;
+    border-bottom: 1px dashed var(--line); font-size: 1.05rem;
   }
   .review .row dt { flex: none; width: 42%; color: var(--muted); margin: 0; }
   .review .row dd { margin: 0; font-weight: 600; flex: 1; }
@@ -208,7 +216,7 @@
   .toast {
     position: fixed; left: 50%; bottom: 1.6rem; transform: translateX(-50%);
     background: #15223b; color: #fff; padding: 0.7rem 1.1rem; border-radius: 10px;
-    font-size: 0.95rem; z-index: 60; max-width: 90vw; text-align: center;
+    font-size: 1.02rem; z-index: 60; max-width: 90vw; text-align: center;
     opacity: 0; pointer-events: none; transition: opacity .2s;
   }
   .toast.show { opacity: 0.96; }
@@ -224,6 +232,20 @@
     animation: sp 0.8s linear infinite;
   }
   @keyframes sp { to { transform: rotate(360deg); } }
+  /* ---------- 좁은 휴대폰 화면 ---------- */
+  @media (max-width: 400px) {
+    /* 양옆 여백을 줄여 글자가 들어갈 자리를 넓힙니다 */
+    .card { margin: 0.8rem 0.45rem; padding: 1rem 0.85rem; }
+    .stepinfo, .topbar { padding-left: 0.7rem; padding-right: 0.7rem; }
+    /* 두 칸으로 두면 글자가 커졌을 때 눌리기 어려워 한 칸으로 폅니다 */
+    .opts.two { grid-template-columns: 1fr; }
+    .review .row { flex-direction: column; gap: 0.15rem; }
+    .review .row dt { width: auto; }
+  }
+
+  /* 손가락으로 누르는 곳은 최소 48px 를 지킵니다 */
+  .opt, .btn, .fsbtn { touch-action: manipulation; }
+
 </style>
 </head>
 <body>
@@ -266,6 +288,9 @@
 
 var API_URL = "https://script.google.com/macros/s/AKfycbxTU8J8kGory1nEaHXpofimw6apAMXNQFhrPD8yET-e7ImTqhwz7P55da-2OkKoFGxmeg/exec";
 var CFG = null;
+
+/* 빌드할 때 받아둔 설정 — 처음 들어오신 분의 첫 화면용 */
+var CFG_SNAPSHOT = {"round":"2026년 하반기","centerName":"대치노인복지관","surveyTitle":"사회교육프로그램 강의평가","fullTitle":"2026년 하반기 사회교육프로그램 강의평가","retention":"평가 종료 후 1년","storage":"구글 클라우드 서버(해외)","period":{"open":true,"state":"no_period","message":"평가를 받고 있습니다.","from":"","to":"","mode":"auto","today":"2026-10-27"},"maxPrograms":0,"scale":[{"v":5,"label":"매우 만족"},{"v":4,"label":"만족"},{"v":3,"label":"보통"},{"v":2,"label":"불만족"},{"v":1,"label":"매우 불만족"}],"programs":[{"code":"P01","name":"가요","day":"월","time":"09:30-10:20"},{"code":"P02","name":"왕초보영어","day":"월","time":"09:30-10:20"},{"code":"P03","name":"K-POP 댄스","day":"월","time":"10:30-11:20"},{"code":"P04","name":"영어 회화","day":"월","time":"10:30-11:20"},{"code":"P05","name":"가곡","day":"월","time":"13:00-13:50"},{"code":"P06","name":"우쿨렐레","day":"월","time":"13:00-13:50"},{"code":"P07","name":"합창","day":"월","time":"14:00-14:50"},{"code":"P08","name":"첫걸음 중국어","day":"월","time":"15:00-15:50"},{"code":"P09","name":"실전 활용 중국어","day":"월","time":"16:00-16:50"},{"code":"P10","name":"클래식기타","day":"화","time":"09:30-11:00"},{"code":"P11","name":"일본어와 현지회화","day":"화","time":"10:30-11:20"},{"code":"P12","name":"라틴댄스","day":"화","time":"14:30-15:20"},{"code":"P13","name":"힐링요가","day":"수","time":"09:30-10:20"},{"code":"P14","name":"실버필라테스","day":"수","time":"10:30-11:20"},{"code":"P15","name":"감성수채화","day":"수","time":"10:30-11:30"},{"code":"P16","name":"태극권","day":"수","time":"15:00-15:50"},{"code":"P17","name":"라인댄스","day":"목","time":"09:30-10:20"},{"code":"P18","name":"웨스턴댄스","day":"목","time":"10:30-11:20"},{"code":"P19","name":"입문 일본어","day":"목","time":"09:30-10:20"},{"code":"P20","name":"초급 일본어","day":"목","time":"10:30-11:20"},{"code":"P21","name":"아트캘리","day":"목","time":"13:00-14:00"},{"code":"P22","name":"숟가락난타","day":"목","time":"15:00-15:50"},{"code":"P23","name":"우리춤체조","day":"금","time":"11:00-11:50"},{"code":"P24","name":"코어체조","day":"금","time":"13:00-13:50"}],"dayOrder":["월","화","수","목","금"],"sections":[{"id":"A","key":"강의","title":"강의평가","items":[{"id":"Q4_1","text":"강의 난이도는 적절합니까?"},{"id":"Q4_2","text":"강의 진도는 적절합니까?"},{"id":"Q4_3","text":"강의 내용이 이해하기 쉽고 흥미로웠습니까?"}]},{"id":"B","key":"운영","title":"프로그램 운영 및 관리 평가","items":[{"id":"Q6_1","text":"추첨제 수강신청 방식에 대해 만족합니까?"},{"id":"Q6_2","text":"출결관리 방식은 적절하다고 생각합니까?"},{"id":"Q6_3","text":"운영 일정(수업시간, 회차, 기간 등)은 적절합니까?"}]},{"id":"C","key":"시설","title":"시설 및 환경 평가","items":[{"id":"Q8_1","text":"프로그램이 진행된 장소(프로그램실 또는 소그룹실)의 환경에 만족하십니까?"},{"id":"Q8_2","text":"프로그램 운영에 필요한 기자재(음향, 냉난방 등) 환경에 만족합니까?"},{"id":"Q8_3","text":"시설 이용환경(접근성, 청결도, 편의성 등)에 만족합니까?"}]}],"programComment":{"id":"Q5","label":"이 과목에 대한 기타 의견","hint":"강의 내용, 운영(시간·인원·출결), 시설·기자재 등 무엇이든 자유롭게 적어주세요"},"programIntent":{"id":"Q11","text":"차기 동일 프로그램 재참여 의향","textTemplate":"{프로그램} 프로그램 재참여 의향이 있습니까?"},"overall":{"id":"Q10","text":"대치노인복지관 사회교육프로그램 전반적 만족도"},"commonIntent":{"id":"Q12","text":"다른 프로그램에도 참여 의향이 있습니까?"},"frees":[{"id":"Q13","text":"신규 사회교육프로그램 개설 희망 강좌","hint":"진행되고 있는 동아리, 사회교육프로그램 제외 (예: 인문학 등)"},{"id":"Q14","text":"기타 의견","hint":"기관 이용, 프로그램 운영, 개선 건의사항 등 자유롭게 작성해주세요"}]};
 
 /* POST 의 Content-Type 이 text/plain 인 것은 실수가 아닙니다.
    application/json 으로 보내면 브라우저가 사전확인(OPTIONS)을 먼저 보내는데
@@ -539,6 +564,68 @@ function pendingCodes() {
   return A.selected.filter(function (c) { return !isDone(c); });
 }
 
+/* ================= 세션 미리 열어두기 =================
+ *
+ *  [다음]을 누른 뒤에 서버에 물어보면 2초를 기다리셔야 합니다.
+ *  성함과 번호를 다 넣으신 순간 미리 물어보면, 누르실 때쯤엔
+ *  답이 와 있어 기다림이 사라집니다.
+ *
+ *  성함이나 번호를 고치시면 먼저 물어본 답은 버리고 다시 물어봅니다.
+ * ======================================================= */
+
+var PRE = null;        // { key, done, res }
+var preTimer = null;
+
+function sessionKey() { return String(A.name || '').trim() + '|' + A.phone; }
+
+function phoneOk() { return A.phone.length >= 10 && A.phone.length <= 11; }
+
+/** 입력을 멈추신 뒤 0.4초가 지나면 미리 물어봅니다 */
+function prefetchSession() {
+  if (preTimer) clearTimeout(preTimer);
+  preTimer = setTimeout(askAhead, 400);
+}
+
+function askAhead() {
+  if (A.consent !== 1) return;
+  if (A.doneCodes.length) return;               // 이미 확정된 분
+  if (!String(A.name || '').trim() || !phoneOk()) return;
+
+  var key = sessionKey();
+  if (PRE && PRE.key === key) return;           // 같은 내용으로 이미 물어봤습니다
+
+  var mine = { key: key, done: false, res: null };
+  PRE = mine;
+  google.script.run
+    .withSuccessHandler(function (r) { if (PRE === mine) { mine.done = true; mine.res = r; } })
+    .withFailureHandler(function () { if (PRE === mine) PRE = null; })
+    .startSession({ name: String(A.name || '').trim(), phone: A.phone, consent: true });
+}
+
+/** 미리 받아둔 답이 있으면 그걸 쓰고, 없으면 지금 물어봅니다 */
+function getSession(cb) {
+  var key = sessionKey();
+
+  function askNow() {
+    google.script.run
+      .withSuccessHandler(cb)
+      .withFailureHandler(function () { cb(null); })
+      .startSession({ name: String(A.name || '').trim(), phone: A.phone, consent: A.consent === 1 });
+  }
+
+  if (!PRE || PRE.key !== key) { askNow(); return; }
+  if (PRE.done) { cb(PRE.res); return; }
+
+  // 아직 오는 중이면 기다립니다 (이미 상당 부분 지나갔으므로 금방 옵니다)
+  var mine = PRE;
+  var t = setInterval(function () {
+    if (PRE !== mine) { clearInterval(t); askNow(); return; }   // 중간에 내용이 바뀜
+    if (!mine.done) return;
+    clearInterval(t);
+    cb(mine.res);
+  }, 80);
+}
+
 /* ================= 뒤에서 저장하기 =================
  *
  *  구글시트에 한 번 쓰는 데 2초쯤 걸립니다. 과목마다 그걸 기다리게 하면
@@ -648,12 +735,13 @@ function buildSteps() {
 
       var q1 = question(c, 'name', '성함', '', true);
       textField(q1, function () { return A.name; },
-        function (v) { A.name = v; }, { placeholder: '예) 홍길동' });
+        function (v) { A.name = v; prefetchSession(); }, { placeholder: '예) 홍길동' });
 
       var q2 = question(c, 'phone', '핸드폰번호', '숫자만 누르시면 - 가 자동으로 들어갑니다.', true);
       var inp = textField(q2, function () { return A.phoneView; },
         function () {}, { type: 'tel', placeholder: '010-1234-5678' });
       attachPhoneFormat(inp);
+      inp.addEventListener('input', prefetchSession);
 
       w.appendChild(c);
     },
@@ -670,10 +758,11 @@ function buildSteps() {
       if (A.doneCodes.length) { done(true); return; }   // 확정된 뒤에는 다시 조회하지 않습니다
 
       overlay('확인하는 중입니다...');
-      google.script.run
-        .withSuccessHandler(function (r) {
+      getSession(function (r) {
+        {
           overlayOff();
-          if (!r || !r.ok) { handleServerError(r); done(false); return; }
+          if (!r) { toast('통신에 실패했습니다. 잠시 후 다시 시도해 주세요.'); done(false); return; }
+          if (!r.ok) { handleServerError(r); done(false); return; }
 
           // 다른 사람으로 바뀌었으면 앞서 입력한 답변을 모두 비웁니다
           if (A.rid && A.rid !== r.respondentId) {
@@ -698,13 +787,8 @@ function buildSteps() {
             toast('이전에 ' + A.doneCodes.length + '과목을 작성하셨습니다. 이어서 진행합니다.');
           }
           done(true);
-        })
-        .withFailureHandler(function () {
-          overlayOff();
-          toast('통신에 실패했습니다. 잠시 후 다시 시도해 주세요.');
-          done(false);
-        })
-        .startSession({ name: A.name, phone: A.phone, consent: A.consent === 1 });
+        }
+      });
     }
   });
 
@@ -1366,6 +1450,8 @@ function boot() {
       if (o && o.at && (Date.now() - o.at) < MAX_AGE && o.data) cached = o.data;
     }
   } catch (e) {}
+
+  if (!cached && CFG_SNAPSHOT) cached = CFG_SNAPSHOT;   // 처음 들어오신 분
 
   if (cached) { CFG = cached; boot(); }
   else { $('ttl').textContent = '불러오는 중입니다...'; }

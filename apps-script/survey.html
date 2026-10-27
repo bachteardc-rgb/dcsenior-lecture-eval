@@ -241,6 +241,68 @@ function pendingCodes() {
   return A.selected.filter(function (c) { return !isDone(c); });
 }
 
+/* ================= 세션 미리 열어두기 =================
+ *
+ *  [다음]을 누른 뒤에 서버에 물어보면 2초를 기다리셔야 합니다.
+ *  성함과 번호를 다 넣으신 순간 미리 물어보면, 누르실 때쯤엔
+ *  답이 와 있어 기다림이 사라집니다.
+ *
+ *  성함이나 번호를 고치시면 먼저 물어본 답은 버리고 다시 물어봅니다.
+ * ======================================================= */
+
+var PRE = null;        // { key, done, res }
+var preTimer = null;
+
+function sessionKey() { return String(A.name || '').trim() + '|' + A.phone; }
+
+function phoneOk() { return A.phone.length >= 10 && A.phone.length <= 11; }
+
+/** 입력을 멈추신 뒤 0.4초가 지나면 미리 물어봅니다 */
+function prefetchSession() {
+  if (preTimer) clearTimeout(preTimer);
+  preTimer = setTimeout(askAhead, 400);
+}
+
+function askAhead() {
+  if (A.consent !== 1) return;
+  if (A.doneCodes.length) return;               // 이미 확정된 분
+  if (!String(A.name || '').trim() || !phoneOk()) return;
+
+  var key = sessionKey();
+  if (PRE && PRE.key === key) return;           // 같은 내용으로 이미 물어봤습니다
+
+  var mine = { key: key, done: false, res: null };
+  PRE = mine;
+  google.script.run
+    .withSuccessHandler(function (r) { if (PRE === mine) { mine.done = true; mine.res = r; } })
+    .withFailureHandler(function () { if (PRE === mine) PRE = null; })
+    .startSession({ name: String(A.name || '').trim(), phone: A.phone, consent: true });
+}
+
+/** 미리 받아둔 답이 있으면 그걸 쓰고, 없으면 지금 물어봅니다 */
+function getSession(cb) {
+  var key = sessionKey();
+
+  function askNow() {
+    google.script.run
+      .withSuccessHandler(cb)
+      .withFailureHandler(function () { cb(null); })
+      .startSession({ name: String(A.name || '').trim(), phone: A.phone, consent: A.consent === 1 });
+  }
+
+  if (!PRE || PRE.key !== key) { askNow(); return; }
+  if (PRE.done) { cb(PRE.res); return; }
+
+  // 아직 오는 중이면 기다립니다 (이미 상당 부분 지나갔으므로 금방 옵니다)
+  var mine = PRE;
+  var t = setInterval(function () {
+    if (PRE !== mine) { clearInterval(t); askNow(); return; }   // 중간에 내용이 바뀜
+    if (!mine.done) return;
+    clearInterval(t);
+    cb(mine.res);
+  }, 80);
+}
+
 /* ================= 뒤에서 저장하기 =================
  *
  *  구글시트에 한 번 쓰는 데 2초쯤 걸립니다. 과목마다 그걸 기다리게 하면
@@ -350,12 +412,13 @@ function buildSteps() {
 
       var q1 = question(c, 'name', '성함', '', true);
       textField(q1, function () { return A.name; },
-        function (v) { A.name = v; }, { placeholder: '예) 홍길동' });
+        function (v) { A.name = v; prefetchSession(); }, { placeholder: '예) 홍길동' });
 
       var q2 = question(c, 'phone', '핸드폰번호', '숫자만 누르시면 - 가 자동으로 들어갑니다.', true);
       var inp = textField(q2, function () { return A.phoneView; },
         function () {}, { type: 'tel', placeholder: '010-1234-5678' });
       attachPhoneFormat(inp);
+      inp.addEventListener('input', prefetchSession);
 
       w.appendChild(c);
     },
@@ -372,10 +435,11 @@ function buildSteps() {
       if (A.doneCodes.length) { done(true); return; }   // 확정된 뒤에는 다시 조회하지 않습니다
 
       overlay('확인하는 중입니다...');
-      google.script.run
-        .withSuccessHandler(function (r) {
+      getSession(function (r) {
+        {
           overlayOff();
-          if (!r || !r.ok) { handleServerError(r); done(false); return; }
+          if (!r) { toast('통신에 실패했습니다. 잠시 후 다시 시도해 주세요.'); done(false); return; }
+          if (!r.ok) { handleServerError(r); done(false); return; }
 
           // 다른 사람으로 바뀌었으면 앞서 입력한 답변을 모두 비웁니다
           if (A.rid && A.rid !== r.respondentId) {
@@ -400,13 +464,8 @@ function buildSteps() {
             toast('이전에 ' + A.doneCodes.length + '과목을 작성하셨습니다. 이어서 진행합니다.');
           }
           done(true);
-        })
-        .withFailureHandler(function () {
-          overlayOff();
-          toast('통신에 실패했습니다. 잠시 후 다시 시도해 주세요.');
-          done(false);
-        })
-        .startSession({ name: A.name, phone: A.phone, consent: A.consent === 1 });
+        }
+      });
     }
   });
 

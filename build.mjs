@@ -38,6 +38,24 @@ if (!urlReady) {
   console.warn('     주소를 넣고 node build.mjs 를 다시 실행하세요.\n');
 }
 
+/* ---------- 설정 스냅샷 ----------
+   이 기기에 저장해 둔 설정이 없는 "처음 들어오신 분"도 기다리지 않도록,
+   빌드할 때 받아둔 설정을 파일 안에 넣어둡니다. 화면은 이걸로 즉시 그리고,
+   최신 설정은 뒤에서 받아와 달라진 것이 있으면 맞춰줍니다. */
+let SNAPSHOT = 'null';
+if (urlReady) {
+  try {
+    const r = await fetch(API_URL + '?action=config');
+    const j = await r.json();
+    if (j && j.ok && j.data) {
+      SNAPSHOT = JSON.stringify(j.data);
+      console.log('   설정 스냅샷 포함 — 과목 ' + j.data.programs.length + '개');
+    }
+  } catch (e) {
+    console.warn('   ⚠ 설정 스냅샷을 받지 못했습니다. 첫 화면이 조금 늦게 뜹니다.');
+  }
+}
+
 /* ---------- 원본 읽기 ---------- */
 const styles = read('apps-script/styles.html');
 let html = read('apps-script/survey.html');
@@ -45,11 +63,23 @@ let html = read('apps-script/survey.html');
 /* ---------- 1) 스타일 끼워 넣기 ---------- */
 const INCLUDE = "<?!= include('styles') ?>";
 if (!html.includes(INCLUDE)) throw new Error('survey.html 에서 ' + INCLUDE + ' 를 찾지 못했습니다');
+// 휴대폰이 화면을 제 폭으로 그리게 하는 태그.
+// 이것이 없으면 375px 휴대폰이 981px 로 그린 뒤 축소해서 글씨가 깨알같이 보입니다.
+// (Apps Script 에서는 addMetaTag 가 넣어주던 것이라 여기서 따로 넣어야 합니다)
+const HEAD =
+  '<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover">' + NL +
+  '  <title>대치노인복지관 사회교육프로그램 강의평가</title>' + NL +
+  '  <meta name="theme-color" content="#1f3864">' + NL +
+  '  <meta property="og:title" content="사회교육프로그램 강의평가">' + NL +
+  '  <meta property="og:description" content="대치노인복지관 사회교육프로그램 강의평가입니다. 약 5분 걸립니다.">' + NL +
+  '  <meta property="og:type" content="website">' + NL +
+  '  ';
+
 const PRECONNECT =
   '<link rel="preconnect" href="https://script.google.com" crossorigin>' + NL +
   '  <link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>' + NL +
   '  ';
-html = html.replace(INCLUDE, PRECONNECT + styles.trim());
+html = html.replace(INCLUDE, HEAD + PRECONNECT + styles.trim());
 
 /* ---------- 2) + 3) CFG 자리에 통신 껍데기 넣기 ---------- */
 const CFG_LINE = 'var CFG = <?!= cfg ?>;';
@@ -65,6 +95,9 @@ const SHIM = `/* ===============================================================
 
 var API_URL = ${JSON.stringify(API_URL)};
 var CFG = null;
+
+/* 빌드할 때 받아둔 설정 — 처음 들어오신 분의 첫 화면용 */
+var CFG_SNAPSHOT = ${SNAPSHOT};
 
 /* POST 의 Content-Type 이 text/plain 인 것은 실수가 아닙니다.
    application/json 으로 보내면 브라우저가 사전확인(OPTIONS)을 먼저 보내는데
@@ -185,6 +218,8 @@ ${bootBody.split('\n').map(function (l) { return l ? '  ' + l : l; }).join('\n')
       if (o && o.at && (Date.now() - o.at) < MAX_AGE && o.data) cached = o.data;
     }
   } catch (e) {}
+
+  if (!cached && CFG_SNAPSHOT) cached = CFG_SNAPSHOT;   // 처음 들어오신 분
 
   if (cached) { CFG = cached; boot(); }
   else { $('ttl').textContent = '불러오는 중입니다...'; }

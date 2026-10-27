@@ -375,7 +375,34 @@ function evalCommentItems() {
  * 설문 화면 설정 전달
  * =================================================================== */
 
+/**
+ * 설문 설정(문항·과목·기간)을 돌려줍니다.
+ *
+ * 화면이 열릴 때마다 호출되는데, 내용은 거의 바뀌지 않으면서
+ * 프로그램 시트를 매번 읽습니다. 여러 분이 한꺼번에 들어오시면
+ * 그만큼 느려지므로 60초 동안은 읽어둔 값을 다시 씁니다.
+ * (과목을 고치시면 늦어도 1분 안에 반영됩니다)
+ */
 function getSurveyConfig() {
+  var cache = null;
+  try { cache = CacheService.getScriptCache(); } catch (e) {}
+  if (cache) {
+    var hit = cache.get(CFG_CACHE_KEY);
+    if (hit) { try { return JSON.parse(hit); } catch (e) {} }
+  }
+  var cfg = buildSurveyConfig_();
+  if (cache) { try { cache.put(CFG_CACHE_KEY, JSON.stringify(cfg), 60); } catch (e) {} }
+  return cfg;
+}
+
+var CFG_CACHE_KEY = 'surveyConfig';
+
+/** 설정 캐시를 지웁니다 — 기간을 바꾸면 바로 반영되도록 */
+function clearConfigCache_() {
+  try { CacheService.getScriptCache().remove(CFG_CACHE_KEY); } catch (e) {}
+}
+
+function buildSurveyConfig_() {
   return {
     round: CONFIG.ROUND,
     centerName: CONFIG.CENTER_NAME,
@@ -1028,6 +1055,7 @@ function getPeriodInfo(token) {
 
 /** 관리자 화면 — 기간 설정 저장 */
 function setPeriod(token, from, to, mode) {
+  clearConfigCache_();
   checkToken_(token);
 
   function clean(d) {

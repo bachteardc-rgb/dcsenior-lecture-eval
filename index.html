@@ -503,7 +503,7 @@ function textField(q, get, set, opts) {
   return inp;
 }
 
-var SCALE_OPTS = CFG.scale.map(function (s) { return { v: s.v, label: s.label }; });
+var SCALE_OPTS = [];   // CFG 가 도착한 뒤 boot() 에서 채웁니다
 var YESNO = [{ v: 1, label: '있음 (O)' }, { v: 0, label: '없음 (X)' }];
 
 function scaleLabel(v) {
@@ -1262,6 +1262,7 @@ function showDone(doneCount) {
    받아와야 하므로 설정이 도착한 뒤에 실행되도록 감싸 두었습니다. */
 
 function boot() {
+  SCALE_OPTS = CFG.scale.map(function (s) { return { v: s.v, label: s.label }; });
 
   $('ttl').textContent = CFG.surveyTitle;
   $('rnd').textContent = CFG.centerName + ' · ' + CFG.round;

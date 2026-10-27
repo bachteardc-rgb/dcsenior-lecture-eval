@@ -131,6 +131,14 @@ google.script = google.script || {};
 
 html = html.replace(CFG_LINE, SHIM);
 
+/* ---------- 2-1) CFG 가 도착하기 전에 실행되면 안 되는 줄 미루기 ----------
+   survey.html 은 CFG 가 처음부터 있다고 보고 최상위에서 바로 씁니다.
+   Vercel 에서는 CFG 가 나중에 도착하므로 boot() 안으로 옮깁니다. */
+const SCALE_LINE =
+  'var SCALE_OPTS = CFG.scale.map(function (s) { return { v: s.v, label: s.label }; });';
+if (!html.includes(SCALE_LINE)) throw new Error('survey.html 에서 SCALE_OPTS 정의를 찾지 못했습니다');
+html = html.replace(SCALE_LINE, 'var SCALE_OPTS = [];   // CFG 가 도착한 뒤 boot() 에서 채웁니다');
+
 /* ---------- 4) 시작 부분을 boot() 로 감싸기 ---------- */
 const START = '/* ================= 시작 ================= */';
 const i = html.indexOf(START);
@@ -149,6 +157,7 @@ const BOOT = `/* ================= 시작 ================= */
    받아와야 하므로 설정이 도착한 뒤에 실행되도록 감싸 두었습니다. */
 
 function boot() {
+  SCALE_OPTS = CFG.scale.map(function (s) { return { v: s.v, label: s.label }; });
 ${bootBody.split('\n').map(function (l) { return l ? '  ' + l : l; }).join('\n')}
 }
 

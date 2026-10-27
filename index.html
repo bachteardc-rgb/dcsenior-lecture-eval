@@ -3,6 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <base target="_top">
+  <link rel="preconnect" href="https://script.google.com" crossorigin>
+  <link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>
   <style>
   :root {
     --navy: #1f3864;
@@ -536,6 +538,61 @@ function sortSelected() {
 function pendingCodes() {
   return A.selected.filter(function (c) { return !isDone(c); });
 }
+
+/* ================= 뒤에서 저장하기 =================
+ *
+ *  구글시트에 한 번 쓰는 데 2초쯤 걸립니다. 과목마다 그걸 기다리게 하면
+ *  5과목이면 10초를 멍하니 보고 계셔야 합니다. 그래서 저장은 뒤로 보내고
+ *  화면은 곧바로 넘깁니다.
+ *
+ *  대신 마지막 제출 직전에 bgSettle() 로 전부 저장됐는지 반드시 확인합니다.
+ *  하나라도 실패했으면 제출을 막고 그 과목으로 되돌립니다.
+ *  "저장된 줄 알았는데 안 돼 있는" 일이 생기지 않도록 하는 장치입니다.
+ * =================================================== */
+
+var BG = [];   // 아직 끝나지 않았거나 실패한 저장들
+
+function bgSave(label, code, send) {
+  var job = { label: label, code: code, done: false, failed: false, res: null };
+  BG.push(job);
+  send(
+    function (r) {                       // 서버가 답을 준 경우
+      job.done = true;
+      job.res = r;
+      job.failed = !r || !r.ok;
+      if (job.failed) bgFailed(job);
+    },
+    function () {                        // 아예 연결이 안 된 경우
+      job.done = true;
+      job.failed = true;
+      bgFailed(job);
+    }
+  );
+  return job;
+}
+
+/** 뒤에서 보낸 저장이 실패했을 때 — 화면 상태를 사실에 맞게 되돌립니다 */
+function bgFailed(job) {
+  if (job.res && job.res.code === 'CLOSED') { showClosed(job.res.period); return; }
+
+  if (job.code) {
+    var i = A.doneCodes.indexOf(job.code);
+    if (i !== -1) A.doneCodes.splice(i, 1);   // 작성 완료 표시를 거둬들입니다
+    A.redo[job.code] = true;
+  }
+  toast(job.label + ' 저장에 실패했습니다. 제출 전에 다시 안내해 드립니다.');
+}
+
+/** 뒤에서 보낸 저장이 전부 끝날 때까지 기다린 뒤 실패 목록을 돌려줍니다 */
+function bgSettle(cb) {
+  function finish() { cb(BG.filter(function (j) { return j.failed; })); }
+  if (!BG.some(function (j) { return !j.done; })) { finish(); return; }
+  var t = setInterval(function () {
+    if (BG.some(function (j) { return !j.done; })) return;
+    clearInterval(t);
+    finish();
+  }, 120);
+}
 /* ================= 단계 구성 ================= */
 
 function buildSteps() {
@@ -692,20 +749,15 @@ function buildSteps() {
       return 'selected';
     },
     onNext: function (done) {
-      overlay('저장하는 중입니다...');
-      google.script.run
-        .withSuccessHandler(function (r) {
-          overlayOff();
-          if (!r || !r.ok) { handleServerError(r); done(false); return; }
-          rebuild();
-          done(true);
-        })
-        .withFailureHandler(function () {
-          overlayOff();
-          toast('통신에 실패했습니다. 잠시 후 다시 시도해 주세요.');
-          done(false);
-        })
-        .setSelection(A.rid, A.selected);
+      // 저장은 뒤에서 보내고 화면은 바로 넘깁니다 (제출 직전 bgSettle 로 확인)
+      bgSave('수강 과목 선택', null, function (ok, fail) {
+        google.script.run
+          .withSuccessHandler(ok)
+          .withFailureHandler(fail)
+          .setSelection(A.rid, A.selected);
+      });
+      rebuild();
+      done(true);
     }
   });
 
@@ -785,26 +837,25 @@ function buildSteps() {
         payload[CFG.programComment.id] = String(a[CFG.programComment.id] || '').trim();
         payload[CFG.programIntent.id] = a[CFG.programIntent.id];
 
-        overlay('저장하는 중입니다...');
-        google.script.run
-          .withSuccessHandler(function (r) {
-            overlayOff();
-            if (!r || !r.ok) { handleServerError(r); done(false); return; }
+        // 먼저 작성 완료로 표시하고 바로 다음 과목으로 넘어갑니다.
+        // 저장이 실패하면 bgFailed 가 이 표시를 도로 거둬들입니다.
+        if (A.doneCodes.indexOf(code) === -1) A.doneCodes.push(code);
+        delete A.redo[code];
 
-            A.doneCodes = r.doneCodes || A.doneCodes;
-            delete A.redo[code];
+        bgSave(progByCode(code).name, code, function (ok, fail) {
+          google.script.run
+            .withSuccessHandler(function (r) {
+              if (r && r.ok && r.doneCodes) A.doneCodes = r.doneCodes;
+              ok(r);
+            })
+            .withFailureHandler(fail)
+            .saveProgramEval(A.rid, payload);
+        });
 
-            var left = pendingCodes().length - 1;
-            toast(progByCode(code).name + ' 평가가 저장되었습니다.' +
-                  (left > 0 ? ' 남은 과목 ' + left + '개' : ''));
-            done(true);
-          })
-          .withFailureHandler(function () {
-            overlayOff();
-            toast('통신에 실패했습니다. 잠시 후 다시 시도해 주세요.');
-            done(false);
-          })
-          .saveProgramEval(A.rid, payload);
+        var left = pendingCodes().length;
+        toast(progByCode(code).name + ' 평가를 작성하셨습니다.' +
+              (left > 0 ? ' 남은 과목 ' + left + '개' : ''));
+        done(true);
       }
     });
   });
@@ -907,18 +958,33 @@ function buildSteps() {
       });
 
       overlay('제출하는 중입니다...');
-      google.script.run
-        .withSuccessHandler(function (r) {
+
+      // 뒤에서 보낸 과목 저장이 전부 끝났는지 먼저 확인합니다.
+      bgSettle(function (bad) {
+        // 과목 평가가 저장되지 않았으면 제출을 막고 그 과목으로 되돌립니다.
+        // (수강 과목 선택은 실패해도 평가 자체는 남으므로 제출을 막지 않습니다)
+        var blocking = bad.filter(function (j) { return j.code; });
+        if (blocking.length) {
           overlayOff();
-          if (!r || !r.ok) { handleServerError(r); done(false); return; }
-          showDone(r.doneCount);
-        })
-        .withFailureHandler(function () {
-          overlayOff();
-          toast('통신에 실패했습니다. 잠시 후 다시 시도해 주세요.');
+          toast(blocking[0].label + ' 평가가 저장되지 않았습니다. 다시 작성해 주세요.');
+          jumpToProgram(blocking[0].code);
           done(false);
-        })
-        .saveCommon(A.rid, payload);
+          return;
+        }
+
+        google.script.run
+          .withSuccessHandler(function (r) {
+            overlayOff();
+            if (!r || !r.ok) { handleServerError(r); done(false); return; }
+            showDone(r.doneCount);
+          })
+          .withFailureHandler(function () {
+            overlayOff();
+            toast('통신에 실패했습니다. 잠시 후 다시 시도해 주세요.');
+            done(false);
+          })
+          .saveCommon(A.rid, payload);
+      });
     }
   });
 
@@ -1281,15 +1347,48 @@ function boot() {
   }
 }
 
-/* 문항·안내문구·접수기간을 Apps Script 에서 받아옵니다. */
+/* 문항·안내문구·접수기간을 Apps Script 에서 받아옵니다.
+ *
+ * 구글시트에서 설정을 받아오는 데 2초쯤 걸립니다. 매번 그걸 기다리면
+ * 화면이 빈 채로 2초가 흐릅니다. 그래서 한 번 받은 설정을 이 기기에
+ * 저장해 두고, 다음부터는 그걸로 먼저 그린 뒤 최신 설정을 뒤에서 받아옵니다.
+ * 복지관 태블릿처럼 여러 분이 돌아가며 쓰는 경우에 특히 효과가 큽니다.
+ */
 (function () {
-  $('ttl').textContent = '불러오는 중입니다...';
+  var CACHE_KEY = 'dcse_cfg';
+  var MAX_AGE = 6 * 60 * 60 * 1000;   // 6시간이 지난 설정은 쓰지 않습니다
+
+  var cached = null;
+  try {
+    var raw = localStorage.getItem(CACHE_KEY);
+    if (raw) {
+      var o = JSON.parse(raw);
+      if (o && o.at && (Date.now() - o.at) < MAX_AGE && o.data) cached = o.data;
+    }
+  } catch (e) {}
+
+  if (cached) { CFG = cached; boot(); }
+  else { $('ttl').textContent = '불러오는 중입니다...'; }
 
   apiGet('config').then(function (res) {
     if (!res || !res.ok || !res.data) throw new Error((res && res.message) || '설정을 받지 못했습니다.');
+    try {
+      localStorage.setItem(CACHE_KEY, JSON.stringify({ at: Date.now(), data: res.data }));
+    } catch (e) {}
+
+    if (!cached) { CFG = res.data; boot(); return; }
+
+    // 저장해 둔 설정으로 이미 그린 뒤입니다. 달라진 것이 있으면 맞춰줍니다.
+    var changed = JSON.stringify(res.data) !== JSON.stringify(cached);
     CFG = res.data;
-    boot();
+    if (CFG.period && CFG.period.open === false) { showClosed(CFG.period); return; }
+    if (changed && step === 0) {   // 아직 시작 전일 때만 다시 그립니다
+      SCALE_OPTS = CFG.scale.map(function (s) { return { v: s.v, label: s.label }; });
+      STEPS = buildSteps();
+      render();
+    }
   }).catch(function () {
+    if (cached) return;   // 저장해 둔 설정으로 이미 진행 중이면 그대로 둡니다
     $('ttl').textContent = '사회교육프로그램 강의평가';
     $('wrap').innerHTML =
       '<div class="card">' +

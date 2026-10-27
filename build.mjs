@@ -20,6 +20,7 @@ import { fileURLToPath } from 'url';
 
 const DIR = path.dirname(fileURLToPath(import.meta.url));
 const read = (f) => fs.readFileSync(path.join(DIR, f), 'utf8');
+const NL = String.fromCharCode(10);
 
 /* ---------- Apps Script 웹앱 주소 ---------- */
 const URL_FILE = 'api-url.txt';
@@ -44,7 +45,11 @@ let html = read('apps-script/survey.html');
 /* ---------- 1) 스타일 끼워 넣기 ---------- */
 const INCLUDE = "<?!= include('styles') ?>";
 if (!html.includes(INCLUDE)) throw new Error('survey.html 에서 ' + INCLUDE + ' 를 찾지 못했습니다');
-html = html.replace(INCLUDE, styles.trim());
+const PRECONNECT =
+  '<link rel="preconnect" href="https://script.google.com" crossorigin>' + NL +
+  '  <link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>' + NL +
+  '  ';
+html = html.replace(INCLUDE, PRECONNECT + styles.trim());
 
 /* ---------- 2) + 3) CFG 자리에 통신 껍데기 넣기 ---------- */
 const CFG_LINE = 'var CFG = <?!= cfg ?>;';
@@ -161,15 +166,48 @@ function boot() {
 ${bootBody.split('\n').map(function (l) { return l ? '  ' + l : l; }).join('\n')}
 }
 
-/* 문항·안내문구·접수기간을 Apps Script 에서 받아옵니다. */
+/* 문항·안내문구·접수기간을 Apps Script 에서 받아옵니다.
+ *
+ * 구글시트에서 설정을 받아오는 데 2초쯤 걸립니다. 매번 그걸 기다리면
+ * 화면이 빈 채로 2초가 흐릅니다. 그래서 한 번 받은 설정을 이 기기에
+ * 저장해 두고, 다음부터는 그걸로 먼저 그린 뒤 최신 설정을 뒤에서 받아옵니다.
+ * 복지관 태블릿처럼 여러 분이 돌아가며 쓰는 경우에 특히 효과가 큽니다.
+ */
 (function () {
-  $('ttl').textContent = '불러오는 중입니다...';
+  var CACHE_KEY = 'dcse_cfg';
+  var MAX_AGE = 6 * 60 * 60 * 1000;   // 6시간이 지난 설정은 쓰지 않습니다
+
+  var cached = null;
+  try {
+    var raw = localStorage.getItem(CACHE_KEY);
+    if (raw) {
+      var o = JSON.parse(raw);
+      if (o && o.at && (Date.now() - o.at) < MAX_AGE && o.data) cached = o.data;
+    }
+  } catch (e) {}
+
+  if (cached) { CFG = cached; boot(); }
+  else { $('ttl').textContent = '불러오는 중입니다...'; }
 
   apiGet('config').then(function (res) {
     if (!res || !res.ok || !res.data) throw new Error((res && res.message) || '설정을 받지 못했습니다.');
+    try {
+      localStorage.setItem(CACHE_KEY, JSON.stringify({ at: Date.now(), data: res.data }));
+    } catch (e) {}
+
+    if (!cached) { CFG = res.data; boot(); return; }
+
+    // 저장해 둔 설정으로 이미 그린 뒤입니다. 달라진 것이 있으면 맞춰줍니다.
+    var changed = JSON.stringify(res.data) !== JSON.stringify(cached);
     CFG = res.data;
-    boot();
+    if (CFG.period && CFG.period.open === false) { showClosed(CFG.period); return; }
+    if (changed && step === 0) {   // 아직 시작 전일 때만 다시 그립니다
+      SCALE_OPTS = CFG.scale.map(function (s) { return { v: s.v, label: s.label }; });
+      STEPS = buildSteps();
+      render();
+    }
   }).catch(function () {
+    if (cached) return;   // 저장해 둔 설정으로 이미 진행 중이면 그대로 둡니다
     $('ttl').textContent = '사회교육프로그램 강의평가';
     $('wrap').innerHTML =
       '<div class="card">' +

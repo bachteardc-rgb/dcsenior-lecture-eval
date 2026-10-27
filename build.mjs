@@ -1,0 +1,182 @@
+/**
+ * apps-script/survey.html  →  index.html  (Vercel에 올라가는 파일)
+ *
+ * 실행:  node build.mjs
+ *
+ * 설문 화면을 두 벌로 관리하지 않기 위한 스크립트입니다.
+ * 화면을 고칠 때는 apps-script/survey.html 하나만 고치고 이걸 실행하세요.
+ * (survey.html 은 Apps Script 안에서도 그대로 쓸 수 있는 원본으로 남습니다)
+ *
+ * 하는 일은 네 가지뿐입니다.
+ *   1) <?!= include('styles') ?>  →  styles.html 내용을 그대로 끼워 넣기
+ *   2) var CFG = <?!= cfg ?>;     →  빈 값으로 두고, 열릴 때 API에서 받아오기
+ *   3) google.script.run          →  같은 모양으로 동작하는 fetch 껍데기 추가
+ *   4) 맨 아래 "시작" 부분        →  설정을 받아온 뒤에 실행되도록 boot() 로 감싸기
+ */
+
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const DIR = path.dirname(fileURLToPath(import.meta.url));
+const read = (f) => fs.readFileSync(path.join(DIR, f), 'utf8');
+
+/* ---------- Apps Script 웹앱 주소 ---------- */
+const URL_FILE = 'api-url.txt';
+let API_URL = '';
+try {
+  API_URL = read(URL_FILE).trim().split('\n')[0].trim();
+} catch {
+  fs.writeFileSync(path.join(DIR, URL_FILE),
+    '여기에 Apps Script 웹앱의 /exec 주소를 한 줄로 붙여넣으세요\n', 'utf8');
+}
+const urlReady = /^https:\/\/script\.google\.com\/macros\/s\/.+\/exec$/.test(API_URL);
+if (!urlReady) {
+  console.warn('\n  ⚠  ' + URL_FILE + ' 에 아직 /exec 주소가 없습니다.');
+  console.warn('     index.html 은 만들어지지만 저장이 되지 않습니다.');
+  console.warn('     주소를 넣고 node build.mjs 를 다시 실행하세요.\n');
+}
+
+/* ---------- 원본 읽기 ---------- */
+const styles = read('apps-script/styles.html');
+let html = read('apps-script/survey.html');
+
+/* ---------- 1) 스타일 끼워 넣기 ---------- */
+const INCLUDE = "<?!= include('styles') ?>";
+if (!html.includes(INCLUDE)) throw new Error('survey.html 에서 ' + INCLUDE + ' 를 찾지 못했습니다');
+html = html.replace(INCLUDE, styles.trim());
+
+/* ---------- 2) + 3) CFG 자리에 통신 껍데기 넣기 ---------- */
+const CFG_LINE = 'var CFG = <?!= cfg ?>;';
+if (!html.includes(CFG_LINE)) throw new Error('survey.html 에서 ' + CFG_LINE + ' 를 찾지 못했습니다');
+
+const SHIM = `/* ===================================================================
+ * Apps Script 와 통신하는 부분  (build.mjs 가 자동으로 넣은 코드)
+ *
+ * 이 화면은 Vercel에 올라가 있어서 google.script.run 을 쓸 수 없습니다.
+ * 대신 아래에서 같은 이름·같은 사용법의 껍데기를 만들어 둡니다.
+ * 덕분에 화면 코드(아래 전부)는 Apps Script에 있을 때와 글자 하나 다르지 않습니다.
+ * =================================================================== */
+
+var API_URL = ${JSON.stringify(API_URL)};
+var CFG = null;
+
+/* POST 의 Content-Type 이 text/plain 인 것은 실수가 아닙니다.
+   application/json 으로 보내면 브라우저가 사전확인(OPTIONS)을 먼저 보내는데
+   Apps Script 는 그 요청을 처리하지 못해 무조건 실패합니다. */
+function apiPost(action, args) {
+  return apiFetch(API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ action: action, args: args })
+  });
+}
+
+function apiGet(action) {
+  return apiFetch(API_URL + '?action=' + encodeURIComponent(action), { method: 'GET' });
+}
+
+/* 20초 안에 답이 없거나 통신이 끊기면 한 번만 다시 시도합니다.
+   네 가지 저장 요청은 모두 같은 요청을 두 번 보내도 덧쓰기만 되므로
+   (응답자ID + 과목코드 기준) 중복 저장될 걱정이 없습니다. */
+function apiFetch(url, opts, isRetry) {
+  var ctl = ('AbortController' in window) ? new AbortController() : null;
+  var timer = setTimeout(function () { if (ctl) ctl.abort(); }, 20000);
+  if (ctl) opts.signal = ctl.signal;
+
+  return fetch(url, opts)
+    .then(function (res) { return res.text(); })
+    .then(function (text) {
+      clearTimeout(timer);
+      try {
+        return JSON.parse(text);
+      } catch (e) {
+        throw new Error('서버가 올바른 응답을 주지 않았습니다.');
+      }
+    })
+    .catch(function (err) {
+      clearTimeout(timer);
+      if (isRetry) throw err;
+      return apiFetch(url, opts, true);
+    });
+}
+
+/* google.script.run 과 똑같이 쓸 수 있는 껍데기.
+   .withSuccessHandler(...).withFailureHandler(...).startSession(...) 형태 그대로. */
+var google = window.google || {};
+google.script = google.script || {};
+(function () {
+  var METHODS = ['startSession', 'setSelection', 'saveProgramEval', 'saveCommon'];
+
+  function runner(onOk, onFail) {
+    var o = {
+      withSuccessHandler: function (f) { return runner(f, onFail); },
+      withFailureHandler: function (f) { return runner(onOk, f); }
+    };
+    METHODS.forEach(function (name) {
+      o[name] = function () {
+        var args = Array.prototype.slice.call(arguments);
+        apiPost(name, args).then(
+          function (res) { if (onOk) onOk(res); },
+          function (err) { if (onFail) onFail(err); }
+        );
+      };
+    });
+    return o;
+  }
+
+  google.script.run = runner(null, null);
+  window.google = google;
+})();`;
+
+html = html.replace(CFG_LINE, SHIM);
+
+/* ---------- 4) 시작 부분을 boot() 로 감싸기 ---------- */
+const START = '/* ================= 시작 ================= */';
+const i = html.indexOf(START);
+if (i === -1) throw new Error('survey.html 에서 시작 구분선을 찾지 못했습니다');
+
+const head = html.slice(0, i);
+const rest = html.slice(i + START.length);
+const j = rest.lastIndexOf('</script>');
+if (j === -1) throw new Error('survey.html 에서 </script> 를 찾지 못했습니다');
+
+const bootBody = rest.slice(0, j).trimEnd();
+const after = rest.slice(j);
+
+const BOOT = `/* ================= 시작 ================= */
+/* 원래는 여기서 바로 화면을 그렸지만, Vercel 에서는 문항을 먼저
+   받아와야 하므로 설정이 도착한 뒤에 실행되도록 감싸 두었습니다. */
+
+function boot() {
+${bootBody.split('\n').map(function (l) { return l ? '  ' + l : l; }).join('\n')}
+}
+
+/* 문항·안내문구·접수기간을 Apps Script 에서 받아옵니다. */
+(function () {
+  $('ttl').textContent = '불러오는 중입니다...';
+
+  apiGet('config').then(function (res) {
+    if (!res || !res.ok || !res.data) throw new Error((res && res.message) || '설정을 받지 못했습니다.');
+    CFG = res.data;
+    boot();
+  }).catch(function () {
+    $('ttl').textContent = '사회교육프로그램 강의평가';
+    $('wrap').innerHTML =
+      '<div class="card">' +
+      '<h2>잠시 연결이 되지 않습니다</h2>' +
+      '<p>인터넷 연결을 확인하신 뒤 화면을 새로고침해 주세요.</p>' +
+      '<p>계속 같은 화면이 나오면 복지관 사무실로 알려주시기 바랍니다.</p>' +
+      '</div>';
+    $('navbar').style.display = 'none';
+  });
+})();
+${after}`;
+
+html = head + BOOT;
+
+/* ---------- 쓰기 ---------- */
+fs.writeFileSync(path.join(DIR, 'index.html'), html, 'utf8');
+console.log('index.html 생성 완료 — ' + html.split('\n').length + '줄, ' +
+            (Buffer.byteLength(html, 'utf8') / 1024).toFixed(0) + 'KB' +
+            (urlReady ? '' : '  (※ API 주소 없음)'));

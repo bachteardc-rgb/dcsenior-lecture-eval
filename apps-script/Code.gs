@@ -863,7 +863,45 @@ function getPrograms() {
  * 4. 웹앱 라우팅
  * =================================================================== */
 
+/**
+ * 설문 화면(survey)은 Vercel에서 받아갑니다. 이 스크립트는 그 화면에
+ * 문항을 내려주고 답을 받아 적는 JSON API 역할을 합니다.
+ *
+ *   GET  ?action=config   문항·안내문구·기간을 JSON으로 내려준다
+ *   GET  ?action=ping     살아있는지 확인 → {"ok":true,"data":"pong"}
+ *   POST {action, args}   아래 API_ACTIONS 의 함수를 호출하고 결과를 돌려준다
+ *
+ * 관리자 화면(?page=admin)은 예전처럼 이 주소에서 그대로 열립니다.
+ * 관리자는 PC 브라우저로 접속하므로 카카오톡 문제가 없습니다.
+ */
+
+/** Vercel 화면이 호출할 수 있는 함수 목록. 여기 없는 이름은 거부됩니다. */
+var API_ACTIONS = {
+  startSession:    startSession,
+  setSelection:    setSelection,
+  saveProgramEval: saveProgramEval,
+  saveCommon:      saveCommon
+};
+
+function json_(obj) {
+  return ContentService
+    .createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
 function doGet(e) {
+  var action = e && e.parameter && e.parameter.action;
+
+  if (action) {
+    try {
+      if (action === 'config') return json_({ ok: true, data: getSurveyConfig() });
+      if (action === 'ping')   return json_({ ok: true, data: 'pong' });
+      return json_({ ok: false, message: '알 수 없는 요청입니다.' });
+    } catch (err) {
+      return json_({ ok: false, message: String(err && err.message || err) });
+    }
+  }
+
   var page = (e && e.parameter && e.parameter.page) || 'survey';
   var file = (page === 'admin') ? 'admin' : 'survey';
 
@@ -874,6 +912,39 @@ function doGet(e) {
     .setTitle(CONFIG.CENTER_NAME + ' ' + fullTitle())
     .addMetaTag('viewport', 'width=device-width, initial-scale=1, maximum-scale=5')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+/**
+ * Vercel 화면에서 보낸 저장 요청을 처리합니다.
+ *
+ * 받는 모양 : { "action": "saveCommon", "args": [응답자ID, 답변객체] }
+ * 돌려주는 것: 해당 함수가 원래 돌려주던 객체 그대로 ({ok:true,...} / {ok:false,...})
+ *
+ * 화면 쪽 코드를 고치지 않아도 되도록, google.script.run 이 넘기던 인자를
+ * args 배열에 그대로 담아 보내고 여기서 펼쳐서 호출합니다.
+ *
+ * ※ 잠금(LockService)은 startSession·setSelection·saveProgramEval·saveCommon
+ *   각 함수가 이미 안에서 걸고 있으므로 여기서 또 걸지 않습니다.
+ */
+function doPost(e) {
+  var req;
+  try {
+    req = JSON.parse(e.postData.contents);
+  } catch (err) {
+    return json_({ ok: false, code: 'BAD_REQUEST', message: '요청 형식이 올바르지 않습니다.' });
+  }
+
+  var fn = Object.prototype.hasOwnProperty.call(API_ACTIONS, req.action)
+             ? API_ACTIONS[req.action] : null;
+  if (!fn) {
+    return json_({ ok: false, code: 'UNKNOWN_ACTION', message: '알 수 없는 요청입니다.' });
+  }
+
+  try {
+    return json_(fn.apply(null, req.args || []));
+  } catch (err) {
+    return json_({ ok: false, code: 'ERROR', message: String(err && err.message || err) });
+  }
 }
 
 function include(filename) {

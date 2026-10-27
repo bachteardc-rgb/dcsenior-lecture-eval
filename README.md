@@ -1,0 +1,114 @@
+# 2026년 하반기 사회교육프로그램 강의평가
+
+카카오톡으로 보낸 링크가 사람마다 열리기도 하고 안 열리기도 하던 문제를
+없애기 위해, 화면과 저장을 분리한 구조입니다.
+
+```
+[이용자 휴대폰] → [Vercel: index.html]        ← 화면
+                        │ fetch
+                        ▼
+        [Apps Script /exec: JSON API]         ← 창구
+                        │
+                        ▼
+                  [구글시트]                   ← 저장·집계·관리자 화면
+```
+
+## 왜 바꿨나
+
+기존 배포는 이미 **실행: 나 / 액세스: 모든 사용자** 로 되어 있었습니다.
+즉 설정을 잘못해서 생긴 문제가 아니었습니다.
+
+Apps Script 웹앱 주소는 열릴 때마다 **`googleusercontent.com` 으로 리디렉션 →
+iframe 안에서 화면 표시** 라는 단계를 거칩니다. 카카오톡 인앱 브라우저와
+iOS 사파리가 서드파티 쿠키·iframe 통신을 막기 때문에 이 중간에서 끊깁니다.
+구글 계정을 여러 개 로그인해 둔 분은 `/u/0`, `/u/1` 계정 불일치로 막힙니다.
+주소를 복사해 크롬에 붙여넣으면 열리던 것이 그 증거입니다.
+
+Vercel은 리디렉션도 iframe도 없는 HTML 한 장이라 실패할 구간이 없습니다.
+
+## 파일
+
+| 파일 | 무엇 |
+|---|---|
+| `index.html` | **자동 생성됩니다. 직접 고치지 마세요.** Vercel이 배포하는 파일 |
+| `build.mjs` | `apps-script/survey.html` → `index.html` 변환 |
+| `api-url.txt` | Apps Script 웹앱 `/exec` 주소 한 줄 |
+| `apps-script/Code.gs` | 서버 코드. 저장·집계·관리자 기능 전부 |
+| `apps-script/survey.html` | **설문 화면 원본.** 화면은 여기만 고칩니다 |
+| `apps-script/admin.html` | 관리자 화면 (Apps Script에서 그대로 열림) |
+| `apps-script/styles.html` | 공통 스타일 |
+| `vercel.json` | 캐시·보안 헤더 |
+
+### 설문 화면이 두 곳에 있는 것처럼 보이는 이유
+
+`survey.html` 하나가 원본이고 `index.html` 은 거기서 만들어집니다.
+`build.mjs` 가 하는 일은 네 가지뿐이라, 화면 코드 자체는 글자 하나 다르지 않습니다.
+
+1. `<?!= include('styles') ?>` 자리에 `styles.html` 내용을 끼워 넣음
+2. `var CFG = <?!= cfg ?>;` 를 비우고, 열릴 때 API에서 받아오게 함
+3. `google.script.run` 과 똑같이 쓸 수 있는 `fetch` 껍데기를 넣음
+4. 맨 아래 "시작" 부분을 `boot()` 로 감싸 설정이 온 뒤 실행되게 함
+
+덕분에 `survey.html` 은 Apps Script 안에서도 **지금 그대로 열립니다.**
+Vercel에 문제가 생기면 기존 `/exec?page=survey` 주소를 그대로 쓰면 됩니다.
+
+## 무엇을 고칠 때 어디를 손보나
+
+| 바꾸고 싶은 것 | 고치는 곳 | 그 다음 |
+|---|---|---|
+| 과목 목록 | 구글시트 **`프로그램` 시트** | **아무것도 안 해도 됨** |
+| 접수 기간 열고 닫기 | 관리자 화면 | **아무것도 안 해도 됨** |
+| 차수, 기관명, 문항 | `apps-script/Code.gs` 위쪽 `CONFIG` · `SECTIONS` | Apps Script 새 버전 배포 |
+| 저장 규칙, 집계 | `apps-script/Code.gs` | Apps Script 새 버전 배포 |
+| 설문 화면 디자인·흐름 | `apps-script/survey.html` | `node build.mjs` → git push |
+| 관리자 화면 | `apps-script/admin.html` | Apps Script 새 버전 배포 |
+
+평소 제일 자주 바꾸는 **과목 목록은 시트만 고치면 됩니다.**
+
+## 화면을 고친 뒤
+
+```bash
+node build.mjs
+```
+
+`index.html` 이 다시 만들어집니다. git에 push하면 Vercel이 자동 배포합니다.
+
+## 서버 코드를 고친 뒤
+
+Apps Script는 **저장만으로는 `/exec` 에 반영되지 않습니다.**
+**배포 > 배포 관리 > (연필) > 버전: 새 버전 > 배포** 를 해야 반영됩니다.
+가장 흔한 실수입니다.
+
+> 배포는 **반드시 시트 소유자 계정(dcsenior)** 으로 하셔야 합니다.
+> 웹앱의 "나로 실행"은 **배포 버튼을 누른 사람** 기준으로 정해지기 때문입니다.
+
+확인: `/exec` 주소 뒤에 `?action=ping` → `{"ok":true,"data":"pong"}`
+
+## 주의
+
+- `index.html` 을 직접 고치면 다음 `node build.mjs` 때 지워집니다.
+- POST 요청의 `Content-Type` 이 `text/plain` 인 것은 오타가 아닙니다.
+  `application/json` 으로 보내면 브라우저가 사전확인(OPTIONS)을 먼저 보내는데
+  Apps Script가 그 요청을 처리하지 못해 무조건 실패합니다.
+- 배포 주소(`/exec`)를 새로 만들면 `api-url.txt` 도 바꾸고 다시 빌드해야 합니다.
+  기존 배포를 **수정**하면 주소가 그대로라 손댈 필요가 없습니다.
+- Vercel의 `.vercel.app` 주소는 프로젝트를 만들 때 이름으로 정해지고
+  나중에 바꿀 수 없습니다.
+
+## 관리자 화면
+
+관리자는 PC 브라우저로 접속하므로 카카오톡 문제가 없습니다.
+그래서 **Apps Script 주소를 그대로 씁니다.**
+
+```
+https://script.google.com/macros/s/.../exec?page=admin
+```
+
+## 중복·이어하기 처리
+
+- 같은 **성함 + 휴대폰번호**면 같은 사람으로 보고 이어서 작성합니다.
+- 이미 작성한 과목은 다시 열면 덮어씁니다. 새 줄이 생기지 않습니다.
+- 통신이 끊겨 자동으로 한 번 재시도해도, 같은 응답자·같은 과목이면
+  덮어쓰기만 되므로 중복 저장되지 않습니다.
+- 복지관 태블릿처럼 여러 분이 돌아가며 쓰는 경우를 위해
+  **"다음 분 시작하기"** 가 있습니다.

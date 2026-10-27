@@ -1,5 +1,9 @@
 # 2026년 하반기 사회교육프로그램 강의평가
 
+**이용자 안내 주소** — https://dcsenior-lecture-eval.vercel.app/
+**관리자 화면** — Apps Script `/exec?page=admin`
+**GitHub** — bachteardc-rgb/dcsenior-lecture-eval (main에 push하면 Vercel 자동 배포)
+
 카카오톡으로 보낸 링크가 사람마다 열리기도 하고 안 열리기도 하던 문제를
 없애기 위해, 화면과 저장을 분리한 구조입니다.
 

@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <base target="_top">
+  <?!= include('styles') ?>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <h1 id="ttl">사회교육프로그램 강의평가</h1>
+    <div class="round" id="rnd"></div>
+    <div class="fsbar">
+      <span>글자 크기</span>
+      <button class="fsbtn s1" data-fs="1" aria-pressed="true">가</button>
+      <button class="fsbtn s2" data-fs="2" aria-pressed="false">가</button>
+      <button class="fsbtn s3" data-fs="3" aria-pressed="false">가</button>
+    </div>
+  </div>
+</div>
+
+<div class="progress"><i id="bar"></i></div>
+<div class="stepinfo" id="stepinfo"></div>
+
+<div class="wrap" id="wrap"></div>
+
+<div class="navbar" id="navbar">
+  <div class="navbar-inner">
+    <button class="btn ghost" id="btnPrev">이전</button>
+    <button class="btn wide" id="btnNext">다음</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+var CFG = <?!= cfg ?>;
+
+/* 응답 상태 */
+var A = {
+  consent: null,
+  name: '',
+  phone: '',        // 숫자만
+  phoneView: '',    // 하이픈 포함
+  rid: null,        // 응답자ID
+  selected: [],     // 평가할 과목 코드
+  doneCodes: [],    // 서버에 이미 저장된 과목
+  redo: {},         // 다시 작성할 과목
+  progs: {},        // progs[code] = { Q4_1.., Q5, Q6_1.., Q7, Q8_1.., Q9, Q11 }
+  common: {}        // { Q10, Q12, Q13, Q14 }
+};
+
+var STEPS = [];
+var step = 0;
+var RETURN_TO = false;   // [수정] 으로 들어왔으면 과목 저장 후 확인 화면으로 복귀
+
+/* ================= 유틸 ================= */
+function $(id) { return document.getElementById(id); }
+function el(tag, cls, html) {
+  var e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (html !== undefined) e.innerHTML = html;
+  return e;
+}
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+var toastTimer;
+function toast(msg) {
+  var t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function () { t.classList.remove('show'); }, 2800);
+}
+function overlay(msg) {
+  if ($('ovl')) return;
+  var o = el('div', 'overlay');
+  o.id = 'ovl';
+  o.appendChild(el('div', 'spin'));
+  o.appendChild(el('div', '', esc(msg)));
+  document.body.appendChild(o);
+}
+function overlayOff() { var o = $('ovl'); if (o) o.remove(); }
+
+function store(k, v) { try { localStorage.setItem('dcse_' + k, v); } catch (e) {} }
+function load(k) { try { return localStorage.getItem('dcse_' + k); } catch (e) { return null; } }
+
+/* ================= 전화번호 하이픈 ================= */
+function phoneDigits(v) { return String(v || '').replace(/[^0-9]/g, '').slice(0, 11); }
+
+/** 입력 중에는 3-4-4, 입력이 끝났을 때 10자리면 3-3-4 로 정리 */
+function phoneFormat(v, finished) {
+  var d = phoneDigits(v);
+  if (d.length <= 3) return d;
+  if (finished && d.length === 10) {
+    return d.slice(0, 3) + '-' + d.slice(3, 6) + '-' + d.slice(6);
+  }
+  if (d.length <= 7) return d.slice(0, 3) + '-' + d.slice(3);
+  return d.slice(0, 3) + '-' + d.slice(3, 7) + '-' + d.slice(7);
+}
+
+function attachPhoneFormat(inp) {
+  function apply(finished) {
+    var caretDigits = inp.value.slice(0, inp.selectionStart || 0).replace(/[^0-9]/g, '').length;
+    var f = phoneFormat(inp.value, finished);
+    inp.value = f;
+    A.phone = phoneDigits(f);
+    A.phoneView = f;
+
+    // 커서를 원래 자리(숫자 기준)로 되돌립니다
+    var pos = 0, cnt = 0;
+    while (pos < f.length && cnt < caretDigits) {
+      if (f.charCodeAt(pos) >= 48 && f.charCodeAt(pos) <= 57) cnt++;
+      pos++;
+    }
+    try { inp.setSelectionRange(pos, pos); } catch (e) {}
+  }
+  inp.addEventListener('input', function () { apply(false); });
+  inp.addEventListener('blur', function () { apply(true); });
+}
+
+/* ================= 글자 크기 ================= */
+Array.prototype.forEach.call(document.querySelectorAll('.fsbtn'), function (b) {
+  b.addEventListener('click', function () {
+    document.documentElement.setAttribute('data-fs', b.getAttribute('data-fs'));
+    Array.prototype.forEach.call(document.querySelectorAll('.fsbtn'), function (x) {
+      x.setAttribute('aria-pressed', String(x === b));
+    });
+    store('fs', b.getAttribute('data-fs'));
+  });
+});
+(function () {
+  var f = load('fs');
+  if (f) {
+    var tb = document.querySelector('.fsbtn[data-fs="' + f + '"]');
+    if (tb) tb.click();
+  }
+})();
+
+/* ================= 공통 부품 ================= */
+var qno = 0;
+
+function card(title, sub) {
+  var c = el('div', 'card');
+  if (title) c.appendChild(el('h2', '', esc(title)));
+  if (sub) c.appendChild(el('p', 'sub', sub));
+  return c;
+}
+
+function question(parent, key, labelText, hint, required) {
+  qno++;
+  var q = el('div', 'q');
+  q.setAttribute('data-key', key);
+  var lab = el('div', 'label');
+  lab.innerHTML = '<span class="num">' + qno + '</span><span>' + esc(labelText) +
+                  (required ? '<span class="req">*</span>' : '') + '</span>';
+  q.appendChild(lab);
+  if (hint) q.appendChild(el('div', 'hint', esc(hint)));
+  parent.appendChild(q);
+  return q;
+}
+
+/** 선택지 버튼. get/set 으로 값을 읽고 씁니다. */
+function choices(q, options, get, set, cols) {
+  var box = el('div', 'opts' + (cols === 2 ? ' two' : ''));
+  options.forEach(function (o) {
+    var b = el('button', 'opt');
+    b.type = 'button';
+    b.setAttribute('aria-pressed', String(get() === o.v));
+    b.innerHTML = '<span class="dot"></span><span>' + esc(o.label) + '</span>';
+    b.addEventListener('click', function () {
+      set(o.v);
+      Array.prototype.forEach.call(box.children, function (c) {
+        c.setAttribute('aria-pressed', 'false');
+      });
+      b.setAttribute('aria-pressed', 'true');
+      q.classList.remove('invalid');
+    });
+    box.appendChild(b);
+  });
+  q.appendChild(box);
+  q.appendChild(el('div', 'errmsg', '답변을 선택해 주세요.'));
+  return box;
+}
+
+function textField(q, get, set, opts) {
+  opts = opts || {};
+  var inp = opts.multiline ? el('textarea') : el('input');
+  if (!opts.multiline) inp.type = opts.type || 'text';
+  inp.placeholder = opts.placeholder || '';
+  inp.value = get() || '';
+  if (opts.type === 'tel') {
+    inp.setAttribute('inputmode', 'numeric');
+    inp.setAttribute('autocomplete', 'tel');
+    inp.setAttribute('maxlength', '13');
+  }
+  inp.addEventListener('input', function () {
+    set(inp.value);
+    q.classList.remove('invalid');
+  });
+  q.appendChild(inp);
+  q.appendChild(el('div', 'errmsg', '내용을 입력해 주세요.'));
+  return inp;
+}
+
+var SCALE_OPTS = CFG.scale.map(function (s) { return { v: s.v, label: s.label }; });
+var YESNO = [{ v: 1, label: '있음 (O)' }, { v: 0, label: '없음 (X)' }];
+
+function scaleLabel(v) {
+  for (var i = 0; i < CFG.scale.length; i++) {
+    if (CFG.scale[i].v === v) return CFG.scale[i].label;
+  }
+  return '-';
+}
+function progByCode(code) {
+  for (var i = 0; i < CFG.programs.length; i++) {
+    if (CFG.programs[i].code === code) return CFG.programs[i];
+  }
+  return null;
+}
+function progAnswers(code) {
+  if (!A.progs[code]) A.progs[code] = {};
+  return A.progs[code];
+}
+function isDone(code) {
+  return A.doneCodes.indexOf(code) !== -1 && !A.redo[code];
+}
+/** 선택한 과목을 요일·시간 순으로 정렬합니다 */
+function sortSelected() {
+  var order = {};
+  CFG.programs.forEach(function (p, i) { order[p.code] = i; });
+  A.selected.sort(function (a, b) { return order[a] - order[b]; });
+}
+
+/** 실제로 평가를 진행할 과목 (이미 작성한 과목은 제외) */
+function pendingCodes() {
+  return A.selected.filter(function (c) { return !isDone(c); });
+}
+/* ================= 단계 구성 ================= */
+
+function buildSteps() {
+  var steps = [];
+
+  /* --- 0. 안내 및 동의 --- */
+  steps.push({
+    name: '안내 및 동의',
+    render: function (w) {
+      var c = card(CFG.fullTitle);
+      c.appendChild(el('div', 'notice',
+        '<b>' + esc(CFG.centerName) + '</b> 사회교육프로그램을 이용해 주셔서 감사합니다.<br>' +
+        '더 좋은 프로그램을 만들기 위한 의견을 듣고자 합니다.<br><br>' +
+        '· <b>수강하시는 과목을 모두 선택</b>하시면 과목마다 차례로 평가합니다.<br>' +
+        '· 과목 평가가 끝날 때마다 <b>자동으로 저장</b>되니 안심하세요.<br>' +
+        '· 중간에 끊기셔도 <b>같은 성함과 휴대폰번호</b>로 다시 들어오시면 ' +
+        '남은 과목부터 이어서 하실 수 있습니다.'));
+      w.appendChild(c);
+
+      var c2 = card('개인정보 수집·이용 동의');
+      c2.appendChild(el('div', 'notice',
+        '<b>수집 항목</b><ul><li>성함, 휴대폰번호</li></ul>' +
+        '<b>수집·이용 목적</b><ul><li>사회교육프로그램 만족도 조사 및 결과 분석</li>' +
+        '<li>중복 응답 확인 및 수강생 본인 확인</li></ul>' +
+        '<b>보유 및 이용 기간</b><ul><li>' + esc(CFG.retention) + ' (기간 경과 후 파기)</li></ul>' +
+        (CFG.storage
+          ? '<b>저장 위치</b><ul><li>' + esc(CFG.storage) + '</li></ul>' : '') +
+        '<b>동의를 거부하실 수 있습니다.</b> 다만 동의하지 않으시면 평가에 참여하실 수 없습니다.'));
+
+      var q = question(c2, 'consent',
+        '위 내용을 확인하였으며 개인정보 수집·이용에 동의합니다.', '', true);
+      choices(q, [{ v: 1, label: '동의합니다' }, { v: 0, label: '동의하지 않습니다' }],
+        function () { return A.consent; },
+        function (v) { A.consent = v; });
+      w.appendChild(c2);
+    },
+    validate: function () {
+      if (A.consent === 1) return true;
+      if (A.consent === 0) toast('동의하지 않으시면 평가를 진행할 수 없습니다.');
+      return 'consent';
+    }
+  });
+
+  /* --- 1. 정보입력 --- */
+  steps.push({
+    name: '정보입력',
+    render: function (w) {
+      // 평가가 한 건이라도 저장된 뒤에는 성함·번호를 바꿀 수 없습니다.
+      // (바꾸면 앞서 저장한 평가와 연결이 끊어져 다른 사람으로 집계됩니다)
+      if (A.doneCodes.length) { renderLockedInfo(w); return; }
+
+      var c = card('정보입력', '응답하신 분을 확인하기 위한 정보입니다.');
+
+      var q1 = question(c, 'name', '성함', '', true);
+      textField(q1, function () { return A.name; },
+        function (v) { A.name = v; }, { placeholder: '예) 홍길동' });
+
+      var q2 = question(c, 'phone', '핸드폰번호', '숫자만 누르시면 - 가 자동으로 들어갑니다.', true);
+      var inp = textField(q2, function () { return A.phoneView; },
+        function () {}, { type: 'tel', placeholder: '010-1234-5678' });
+      attachPhoneFormat(inp);
+
+      w.appendChild(c);
+    },
+    validate: function () {
+      if (A.doneCodes.length) return true;   // 이미 확정된 정보
+      if (!String(A.name || '').trim()) { toast('성함을 입력해 주세요.'); return 'name'; }
+      if (A.phone.length < 10 || A.phone.length > 11) {
+        toast('휴대폰번호를 정확히 입력해 주세요.');
+        return 'phone';
+      }
+      return true;
+    },
+    onNext: function (done) {
+      if (A.doneCodes.length) { done(true); return; }   // 확정된 뒤에는 다시 조회하지 않습니다
+
+      overlay('확인하는 중입니다...');
+      google.script.run
+        .withSuccessHandler(function (r) {
+          overlayOff();
+          if (!r || !r.ok) { handleServerError(r); done(false); return; }
+
+          // 다른 사람으로 바뀌었으면 앞서 입력한 답변을 모두 비웁니다
+          if (A.rid && A.rid !== r.respondentId) {
+            A.progs = {};
+            A.common = {};
+            A.redo = {};
+          }
+          A.rid = r.respondentId;
+          A.doneCodes = r.doneCodes || [];
+          store('rid', A.rid);
+          store('name', A.name);
+          store('phone', A.phoneView);
+
+          // 이어하기: 지난번 선택과 이미 작성한 과목을 미리 체크
+          var pre = {};
+          (r.selectedCodes || []).forEach(function (c) { pre[c] = true; });
+          A.doneCodes.forEach(function (c) { pre[c] = true; });
+          A.selected = Object.keys(pre);
+          sortSelected();
+
+          if (r.resumed && A.doneCodes.length) {
+            toast('이전에 ' + A.doneCodes.length + '과목을 작성하셨습니다. 이어서 진행합니다.');
+          }
+          done(true);
+        })
+        .withFailureHandler(function () {
+          overlayOff();
+          toast('통신에 실패했습니다. 잠시 후 다시 시도해 주세요.');
+          done(false);
+        })
+        .startSession({ name: A.name, phone: A.phone, consent: A.consent === 1 });
+    }
+  });
+
+  /* --- 2. 수강 과목 선택 (복수) --- */
+  steps.push({
+    name: '수강 과목 선택',
+    render: function (w) {
+      var c = card('수강 과목 선택',
+        '<b>수강하시는 과목을 모두</b> 선택해 주세요. 과목마다 차례로 평가합니다.');
+
+      var count = el('div', 'notice');
+      count.id = 'selCount';
+      c.appendChild(count);
+
+      if (A.doneCodes.length) {
+        c.appendChild(el('div', 'hint',
+          '이미 작성하신 과목은 건너뜁니다. 다시 작성하시려면 해당 과목을 눌러주세요.'));
+      }
+
+      var q = el('div', 'q');
+      q.setAttribute('data-key', 'selected');
+      c.appendChild(q);
+
+      CFG.dayOrder.forEach(function (day) {
+        var list = CFG.programs.filter(function (p) { return p.day === day; });
+        if (!list.length) return;
+        var g = el('div', 'daygroup');
+        g.appendChild(el('h3', '', day + '요일'));
+        var box = el('div', 'opts');
+        list.forEach(function (p) { box.appendChild(progOption(p)); });
+        g.appendChild(box);
+        q.appendChild(g);
+      });
+      q.appendChild(el('div', 'errmsg', '과목을 1개 이상 선택해 주세요.'));
+
+      w.appendChild(c);
+      updateSelCount();
+    },
+    validate: function () {
+      if (A.selected.length) return true;
+      toast('수강하시는 과목을 선택해 주세요.');
+      return 'selected';
+    },
+    onNext: function (done) {
+      overlay('저장하는 중입니다...');
+      google.script.run
+        .withSuccessHandler(function (r) {
+          overlayOff();
+          if (!r || !r.ok) { handleServerError(r); done(false); return; }
+          rebuild();
+          done(true);
+        })
+        .withFailureHandler(function () {
+          overlayOff();
+          toast('통신에 실패했습니다. 잠시 후 다시 시도해 주세요.');
+          done(false);
+        })
+        .setSelection(A.rid, A.selected);
+    }
+  });
+
+  /* --- 3. 과목별 평가 (과목당 한 페이지) --- */
+  var codes = pendingCodes();
+  codes.forEach(function (code) {
+    steps.push({
+      name: (progByCode(code) ? progByCode(code).name : '과목') + ' 평가',
+      progCode: code,
+      render: function (w) {
+        var p = progByCode(code);
+        var a = progAnswers(code);
+
+        // 전체 선택 과목 기준으로 "N개 중 M번째"를 표시합니다
+        var total = A.selected.length;
+        var pos = A.selected.indexOf(code) + 1;
+
+        var head = el('div', 'card');
+        head.style.background = '#1f3864';
+        head.style.borderColor = '#1f3864';
+        head.innerHTML =
+          '<div style="color:#c9d8f5;font-size:.85rem;font-weight:700">' +
+          '수강 과목 ' + total + '개 중 ' + pos + '번째</div>' +
+          '<div style="color:#fff;font-size:1.25rem;font-weight:800;margin-top:.2rem">' +
+          esc(p.name) + '</div>' +
+          '<div style="color:#c9d8f5;font-size:.85rem">' + esc(p.day + '요일 ' + p.time) + '</div>';
+        w.appendChild(head);
+
+        // 세 영역을 한 화면에 이어서 보여줍니다
+        CFG.sections.forEach(function (sec) {
+          var c = card(sec.title, '');
+          sec.items.forEach(function (it) {
+            var q = question(c, it.id, it.text, '', true);
+            choices(q, SCALE_OPTS,
+              function () { return a[it.id]; },
+              function (v) { a[it.id] = v; });
+          });
+          w.appendChild(c);
+        });
+
+        // 재참여 의향 + 기타 의견 (과목당 하나)
+        var c2 = card('재참여 의향과 의견');
+
+        var qi = question(c2, CFG.programIntent.id,
+          CFG.programIntent.textTemplate.replace('{프로그램}', p.name), '', true);
+        choices(qi, YESNO,
+          function () { return a[CFG.programIntent.id]; },
+          function (v) { a[CFG.programIntent.id] = v; }, 2);
+
+        var cm = CFG.programComment;
+        var qc = question(c2, cm.id, cm.label, cm.hint, false);
+        textField(qc, function () { return a[cm.id]; },
+          function (v) { a[cm.id] = v; },
+          { multiline: true, placeholder: '의견이 있으시면 적어주세요. (선택)' });
+
+        w.appendChild(c2);
+      },
+      validate: function () {
+        var a = progAnswers(code);
+        for (var s = 0; s < CFG.sections.length; s++) {
+          var items = CFG.sections[s].items;
+          for (var i = 0; i < items.length; i++) {
+            var id = items[i].id;
+            if (!(a[id] >= 1 && a[id] <= 5)) { toast('답변하지 않은 문항이 있습니다.'); return id; }
+          }
+        }
+        var q11 = a[CFG.programIntent.id];
+        if (q11 !== 0 && q11 !== 1) { toast('재참여 의향을 선택해 주세요.'); return CFG.programIntent.id; }
+        return true;
+      },
+      onNext: function (done) {
+        var a = progAnswers(code);
+        var payload = { programCode: code };
+        CFG.sections.forEach(function (s) {
+          s.items.forEach(function (it) { payload[it.id] = a[it.id]; });
+        });
+        payload[CFG.programComment.id] = String(a[CFG.programComment.id] || '').trim();
+        payload[CFG.programIntent.id] = a[CFG.programIntent.id];
+
+        overlay('저장하는 중입니다...');
+        google.script.run
+          .withSuccessHandler(function (r) {
+            overlayOff();
+            if (!r || !r.ok) { handleServerError(r); done(false); return; }
+
+            A.doneCodes = r.doneCodes || A.doneCodes;
+            delete A.redo[code];
+
+            var left = pendingCodes().length - 1;
+            toast(progByCode(code).name + ' 평가가 저장되었습니다.' +
+                  (left > 0 ? ' 남은 과목 ' + left + '개' : ''));
+            done(true);
+          })
+          .withFailureHandler(function () {
+            overlayOff();
+            toast('통신에 실패했습니다. 잠시 후 다시 시도해 주세요.');
+            done(false);
+          })
+          .saveProgramEval(A.rid, payload);
+      }
+    });
+  });
+
+  /* --- 4. 공통 문항 --- */
+  steps.push({
+    name: '기관 전체 의견',
+    isCommon: true,
+    render: function (w) {
+      var c0 = card('마지막입니다',
+        '여기부터는 <b>과목이 아니라 기관 전체</b>에 대한 질문입니다. 한 번만 답하시면 됩니다.');
+      w.appendChild(c0);
+
+      var c = card('전반적 만족도');
+      var q = question(c, CFG.overall.id, CFG.overall.text, '', true);
+      choices(q, SCALE_OPTS,
+        function () { return A.common[CFG.overall.id]; },
+        function (v) { A.common[CFG.overall.id] = v; });
+      w.appendChild(c);
+
+      var c2 = card('참여 의향');
+      var qi = question(c2, CFG.commonIntent.id, CFG.commonIntent.text, '', true);
+      choices(qi, YESNO,
+        function () { return A.common[CFG.commonIntent.id]; },
+        function (v) { A.common[CFG.commonIntent.id] = v; }, 2);
+      w.appendChild(c2);
+
+      var c3 = card('의견');
+      CFG.frees.forEach(function (it) {
+        var qf = question(c3, it.id, it.text, it.hint, false);
+        textField(qf, function () { return A.common[it.id]; },
+          function (v) { A.common[it.id] = v; },
+          { multiline: true, placeholder: '자유롭게 적어주세요. (선택)' });
+      });
+      w.appendChild(c3);
+    },
+    validate: function () {
+      var v = A.common[CFG.overall.id];
+      if (!(v >= 1 && v <= 5)) { toast('전반적 만족도를 선택해 주세요.'); return CFG.overall.id; }
+      var q12 = A.common[CFG.commonIntent.id];
+      if (q12 !== 0 && q12 !== 1) { toast('참여 의향을 선택해 주세요.'); return CFG.commonIntent.id; }
+      return true;
+    }
+  });
+
+  /* --- 5. 확인 --- */
+  steps.push({
+    name: '응답 확인',
+    isLast: true,
+    render: function (w) {
+      var c = card('작성하신 내용을 확인해 주세요',
+        '과목 평가는 이미 저장되었습니다. 아래 <b>제출 완료하기</b>를 누르시면 끝납니다.');
+
+      var dl = el('dl');
+      function row(k, v, onEdit) {
+        var r = el('div', 'row');
+        r.appendChild(el('dt', '', esc(k)));
+        var dd = el('dd', '', esc(v));
+        if (onEdit) {
+          var b = el('button', 'btn ghost');
+          b.type = 'button';
+          b.textContent = '수정';
+          b.style.cssText = 'min-height:2rem;font-size:.8rem;padding:0 .6rem;flex:none;margin-left:.5rem';
+          b.addEventListener('click', onEdit);
+          dd.appendChild(b);
+        }
+        r.appendChild(dd);
+        dl.appendChild(r);
+      }
+
+      row('성함', A.name);
+      row('휴대폰번호', A.phoneView);
+      dl.appendChild(el('div', 'row', '<dt>평가한 과목</dt><dd>' + A.selected.length + '개</dd>'));
+
+      // 점수는 보여주지 않습니다. 통계는 관리자 화면에서만 확인합니다.
+      A.selected.forEach(function (code) {
+        row('　· ' + progByCode(code).name, '작성 완료',
+          function () { jumpToProgram(code); });
+      });
+
+      row(CFG.overall.text, scaleLabel(A.common[CFG.overall.id]), jumpToCommon);
+      row(CFG.commonIntent.text,
+        A.common[CFG.commonIntent.id] === 1 ? '있음 (O)' : '없음 (X)', jumpToCommon);
+      CFG.frees.forEach(function (it) {
+        row(it.text, String(A.common[it.id] || '').trim() || '(작성 안 함)', jumpToCommon);
+      });
+
+      var box = el('div', 'review');
+      box.appendChild(dl);
+      c.appendChild(box);
+      w.appendChild(c);
+    },
+    validate: function () { return true; },
+    onNext: function (done) {
+      var payload = {};
+      payload[CFG.overall.id] = A.common[CFG.overall.id];
+      payload[CFG.commonIntent.id] = A.common[CFG.commonIntent.id];
+      CFG.frees.forEach(function (it) {
+        payload[it.id] = String(A.common[it.id] || '').trim();
+      });
+
+      overlay('제출하는 중입니다...');
+      google.script.run
+        .withSuccessHandler(function (r) {
+          overlayOff();
+          if (!r || !r.ok) { handleServerError(r); done(false); return; }
+          showDone(r.doneCount);
+        })
+        .withFailureHandler(function () {
+          overlayOff();
+          toast('통신에 실패했습니다. 잠시 후 다시 시도해 주세요.');
+          done(false);
+        })
+        .saveCommon(A.rid, payload);
+    }
+  });
+
+  return steps;
+}
+
+/* ================= 확정된 정보 화면 ================= */
+
+function renderLockedInfo(w) {
+  var c = card('정보입력',
+    '평가가 시작되어 <b>성함과 휴대폰번호는 바꿀 수 없습니다.</b><br>' +
+    '바꾸면 앞서 작성하신 평가와 연결이 끊어지기 때문입니다.');
+
+  var dl = el('dl');
+  [['성함', A.name], ['휴대폰번호', A.phoneView]].forEach(function (x) {
+    var r = el('div', 'row');
+    r.appendChild(el('dt', '', esc(x[0])));
+    r.appendChild(el('dd', '', esc(x[1])));
+    dl.appendChild(r);
+  });
+  var box = el('div', 'review');
+  box.appendChild(dl);
+  c.appendChild(box);
+
+  c.appendChild(restartBlock());
+  w.appendChild(c);
+}
+
+/**
+ * [다른 분이 평가하기] 버튼 + 확인 단계.
+ * 브라우저 기본 확인창(confirm)은 환경에 따라 막히므로 화면 안에서 확인받습니다.
+ */
+function restartBlock() {
+  var ask = el('div');
+  ask.style.marginTop = '1.2rem';
+
+  var b = el('button', 'btn ghost');
+  b.type = 'button';
+  b.style.width = '100%';
+  b.textContent = '다른 분이 평가하기';
+
+  var confirmBox = el('div', 'notice hidden');
+  confirmBox.style.marginTop = '0.8rem';
+  confirmBox.innerHTML =
+    '성함과 휴대폰번호부터 다시 입력합니다.<br>' +
+    '<b>이미 저장된 평가는 그대로 보관되며 지워지지 않습니다.</b>';
+
+  var yes = el('button', 'btn hidden');
+  yes.type = 'button';
+  yes.style.cssText = 'width:100%;margin-top:0.7rem';
+  yes.textContent = '네, 다른 분이 하겠습니다';
+  yes.addEventListener('click', resetAll);
+
+  var no = el('button', 'btn ghost hidden');
+  no.type = 'button';
+  no.style.cssText = 'width:100%;margin-top:0.5rem';
+  no.textContent = '아니요';
+  no.addEventListener('click', function () {
+    confirmBox.classList.add('hidden');
+    yes.classList.add('hidden');
+    no.classList.add('hidden');
+    b.classList.remove('hidden');
+  });
+
+  b.addEventListener('click', function () {
+    b.classList.add('hidden');
+    confirmBox.classList.remove('hidden');
+    yes.classList.remove('hidden');
+    no.classList.remove('hidden');
+  });
+
+  ask.appendChild(b);
+  ask.appendChild(confirmBox);
+  ask.appendChild(yes);
+  ask.appendChild(no);
+  return ask;
+}
+
+/** 처음부터 새로 시작. 이미 저장된 평가는 서버에 그대로 남습니다. */
+function resetAll() {
+  A = {
+    consent: null, name: '', phone: '', phoneView: '', rid: null,
+    selected: [], doneCodes: [], redo: {}, progs: {}, common: {}
+  };
+  try {
+    localStorage.removeItem('dcse_name');
+    localStorage.removeItem('dcse_phone');
+    localStorage.removeItem('dcse_rid');
+  } catch (e) {}
+
+  $('navbar').classList.remove('hidden');
+  $('btnNext').disabled = false;
+  STEPS = buildSteps();
+  step = 0;
+  render();
+}
+
+/* ================= 접수 마감 화면 ================= */
+
+function periodText(p) {
+  if (!p) return '';
+  if (!p.from && !p.to) return '';
+  return '평가 기간: ' + (p.from || '') + ' ~ ' + (p.to || '');
+}
+
+function showClosed(p) {
+  $('navbar').classList.add('hidden');
+  $('bar').style.width = '0';
+  $('stepinfo').textContent = '';
+
+  var w = $('wrap');
+  w.innerHTML = '';
+  var c = el('div', 'card done');
+  c.appendChild(el('div', 'check warn', '!'));
+  c.appendChild(el('h2', '',
+    (p && p.state === 'before') ? '평가 기간이 아직 아닙니다' : '평가가 마감되었습니다'));
+
+  var t = periodText(p);
+  c.appendChild(el('p', 'sub',
+    (t ? esc(t) + '<br>' : '') +
+    '자세한 사항은 복지관으로 문의해 주세요.'));
+  w.appendChild(c);
+  window.scrollTo(0, 0);
+}
+
+/** 서버가 돌려준 오류를 공통 처리합니다. 마감이면 마감 화면으로 전환합니다. */
+function handleServerError(r) {
+  if (r && r.code === 'CLOSED') { showClosed(r.period); return; }
+  toast((r && r.message) || '처리에 실패했습니다. 다시 시도해 주세요.');
+}
+
+/* ================= 과목 선택 버튼 ================= */
+
+function progOption(p) {
+  var b = el('button', 'opt');
+  b.type = 'button';
+  b.setAttribute('data-code', p.code);
+  paintProgOption(b, p);
+  b.addEventListener('click', function () {
+    var i = A.selected.indexOf(p.code);
+    var done = A.doneCodes.indexOf(p.code) !== -1;
+
+    if (done) {
+      // 작성 완료한 과목: 완료(건너뛰기) ↔ 다시 작성
+      if (A.redo[p.code]) delete A.redo[p.code];
+      else A.redo[p.code] = true;
+      if (i === -1) A.selected.push(p.code);
+    } else if (i === -1) {
+      // CFG.maxPrograms 가 0 이면 제한 없음
+      if (CFG.maxPrograms > 0 && A.selected.length >= CFG.maxPrograms) {
+        toast('한 번에 ' + CFG.maxPrograms + '개까지 선택할 수 있습니다.');
+        return;
+      }
+      A.selected.push(p.code);
+    } else {
+      A.selected.splice(i, 1);
+    }
+    sortSelected();
+    paintProgOption(b, p);
+    updateSelCount();
+    var q = document.querySelector('.q[data-key="selected"]');
+    if (q) q.classList.remove('invalid');
+  });
+  return b;
+}
+
+function paintProgOption(b, p) {
+  var picked = A.selected.indexOf(p.code) !== -1;
+  var done = A.doneCodes.indexOf(p.code) !== -1;
+  var redo = !!A.redo[p.code];
+
+  b.setAttribute('aria-pressed', String(picked));
+
+  var badge = '';
+  if (done && !redo) badge = ' <span class="tagok">작성 완료</span>';
+  else if (done && redo) badge = ' <span class="tagredo">다시 작성</span>';
+
+  // 요일별로 묶여 있으므로 항목에는 시간만 표시합니다
+  b.innerHTML = '<span class="dot"></span><span>' + esc(p.name) +
+                ' <span class="meta">' + esc(p.time) + '</span>' + badge + '</span>';
+}
+
+function updateSelCount() {
+  var e = $('selCount');
+  if (!e) return;
+  var pend = pendingCodes().length;
+  if (!A.selected.length) {
+    e.innerHTML = '아직 선택하지 않으셨습니다.';
+    return;
+  }
+  var names = A.selected.map(function (c) { return progByCode(c).name; }).join(', ');
+  e.innerHTML = '<b>' + A.selected.length + '개 과목</b>을 선택하셨습니다.<br>' +
+                '<span style="font-size:.9em">' + esc(names) + '</span>' +
+                (pend !== A.selected.length
+                  ? '<br><span style="font-size:.88em">이번에 평가할 과목: <b>' + pend + '개</b></span>'
+                  : '');
+}
+
+/* ================= 화면 전환 ================= */
+
+function rebuild() {
+  var cur = STEPS[step];
+  STEPS = buildSteps();
+  // 현재 단계 이름 기준으로 위치 유지 (과목 선택 단계에서만 호출됨)
+  if (cur) {
+    for (var i = 0; i < STEPS.length; i++) {
+      if (STEPS[i].name === cur.name) { step = i; break; }
+    }
+  }
+}
+
+function render() {
+  qno = 0;
+  var w = $('wrap');
+  w.innerHTML = '';
+  STEPS[step].render(w);
+
+  $('bar').style.width = Math.round(step / (STEPS.length - 1) * 100) + '%';
+  $('stepinfo').textContent = STEPS[step].isLast
+    ? '마지막 단계  ·  ' + STEPS[step].name
+    : (step + 1) + ' / ' + STEPS.length + '  ·  ' + STEPS[step].name;
+
+  $('btnPrev').classList.toggle('hidden', step === 0);
+  $('btnNext').textContent = STEPS[step].isLast ? '제출 완료하기' : '다음';
+  window.scrollTo(0, 0);
+}
+
+function focusInvalid(key) {
+  var q = document.querySelector('.q[data-key="' + key + '"]');
+  if (!q) return;
+  q.classList.add('invalid');
+  q.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+/** [수정] — 해당 과목의 첫 평가 단계로 이동하고, 끝나면 확인 화면으로 돌아옵니다 */
+function jumpToProgram(code) {
+  A.redo[code] = true;
+  STEPS = buildSteps();
+  for (var i = 0; i < STEPS.length; i++) {
+    if (STEPS[i].progCode === code) {
+      step = i;
+      RETURN_TO = true;
+      render();
+      return;
+    }
+  }
+  render();
+}
+
+/** 공통 문항 단계로 이동했다가 확인 화면으로 돌아옵니다 */
+function jumpToCommon() {
+  for (var i = 0; i < STEPS.length; i++) {
+    if (STEPS[i].isCommon) {
+      step = i;
+      RETURN_TO = true;
+      render();
+      return;
+    }
+  }
+}
+
+function advance() {
+  var st = STEPS[step];
+  var finishedEdit = !!st.progCode || !!st.isCommon;   // 과목은 한 페이지라 저장되면 끝
+
+  // [수정]으로 들어왔다가 다 고쳤으면 확인 화면으로 되돌아갑니다
+  if (RETURN_TO && finishedEdit) {
+    RETURN_TO = false;
+    STEPS = buildSteps();
+    step = STEPS.length - 1;
+    render();
+    return;
+  }
+  if (step < STEPS.length - 1) { step++; render(); }
+}
+
+$('btnPrev').addEventListener('click', function () {
+  if (step > 0) { step--; render(); }
+});
+
+$('btnNext').addEventListener('click', function () {
+  var st = STEPS[step];
+  var v = st.validate();
+  if (v !== true) { focusInvalid(v); return; }
+
+  $('btnNext').disabled = true;
+  function finish(ok) {
+    $('btnNext').disabled = false;
+    if (ok) advance();
+  }
+
+  if (st.onNext) st.onNext(finish);
+  else finish(true);
+});
+
+/* ================= 완료 ================= */
+
+function showDone(doneCount) {
+  $('bar').style.width = '100%';
+  $('stepinfo').textContent = '제출 완료';
+  $('navbar').classList.add('hidden');
+  $('btnNext').disabled = false;   // 제출 시 잠근 버튼을 반드시 풀어줍니다
+
+  var w = $('wrap');
+  w.innerHTML = '';
+  var c = el('div', 'card done');
+  c.appendChild(el('div', 'check', '✓'));
+  c.appendChild(el('h2', '', '제출이 완료되었습니다'));
+  c.appendChild(el('p', 'sub',
+    '<b>' + (doneCount || A.selected.length) + '개 과목</b>의 평가를 작성해 주셨습니다.<br>' +
+    '소중한 의견 감사합니다.<br>더 좋은 프로그램으로 보답하겠습니다.'));
+
+  c.appendChild(el('p', 'sub',
+    '<b>' + esc(A.name) + '</b> 님으로 작성되었습니다.'));
+
+  var b = el('button', 'btn');
+  b.type = 'button';
+  b.style.cssText = 'width:100%;margin-top:1.4rem';
+  b.textContent = '과목 추가로 평가하기';
+  b.addEventListener('click', function () {
+    A.redo = {};
+    A.progs = {};
+    // A.common 은 그대로 두어 공통 문항이 미리 채워진 상태로 보이게 합니다
+    $('navbar').classList.remove('hidden');
+    $('btnNext').disabled = false;
+    STEPS = buildSteps();
+    step = 2;
+    render();
+  });
+  c.appendChild(b);
+
+  // 다음 분에게 넘길 때
+  c.appendChild(restartBlock());
+
+  w.appendChild(c);
+  window.scrollTo(0, 0);
+}
+
+/* ================= 시작 ================= */
+$('ttl').textContent = CFG.surveyTitle;
+$('rnd').textContent = CFG.centerName + ' · ' + CFG.round;
+
+(function () {
+  var n = load('name'), p = load('phone');
+  if (n) A.name = n;
+  if (p) { A.phoneView = p; A.phone = phoneDigits(p); }
+})();
+
+if (CFG.period && CFG.period.open === false) {
+  showClosed(CFG.period);
+} else {
+  STEPS = buildSteps();
+  render();
+}
+</script>
+</body>
+</html>

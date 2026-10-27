@@ -1,0 +1,1113 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <base target="_top">
+  <?!= include('styles') ?>
+  <style>
+    body { background: #eef1f7; }
+    html { font-size: 16px; }
+    .adm { max-width: 1240px; margin: 0 auto; padding: 0 1rem 4rem; }
+
+    .ahead { background: var(--navy); color: #fff; padding: 1rem 0; position: sticky; top: 0; z-index: 30; }
+    .ahead .in {
+      max-width: 1240px; margin: 0 auto; padding: 0 1rem;
+      display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+    }
+    .ahead h1 { margin: 0; font-size: 1.15rem; }
+    .ahead .sp { flex: 1; }
+    .ahead .meta { font-size: 0.82rem; opacity: 0.85; }
+
+    .btn-sm {
+      border: 1px solid rgba(255,255,255,0.5); background: rgba(255,255,255,0.12);
+      color: #fff; border-radius: 8px; padding: 0.45rem 0.9rem; cursor: pointer;
+      font-family: inherit; font-size: 0.88rem; font-weight: 600;
+    }
+    .btn-sm.solid { background: #fff; color: var(--navy); border-color: #fff; }
+    .btn-sm:disabled { opacity: 0.5; cursor: default; }
+
+    .login { max-width: 400px; margin: 12vh auto; }
+    .login .card { margin: 0; padding: 1.8rem 1.5rem; }
+    .login h2 { font-size: 1.2rem; }
+
+    .filters {
+      background: #fff; border: 1px solid var(--line); border-radius: 12px;
+      padding: 0.9rem 1rem; margin: 1rem 0; display: flex; gap: 1rem;
+      flex-wrap: wrap; align-items: flex-end;
+    }
+
+    /* 평가 기간 */
+    .period {
+      background: #fff; border: 1px solid var(--line); border-radius: 12px;
+      padding: 0.75rem 1rem; margin-top: 1rem;
+      display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap;
+    }
+    .period .sp { flex: 1; }
+    .pstate { font-size: 0.95rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; }
+    .pstate .dot2 { width: 0.7rem; height: 0.7rem; border-radius: 50%; display: inline-block; }
+    .pstate .dot2.on { background: var(--ok); box-shadow: 0 0 0 3px #dcf0e4; }
+    .pstate .dot2.off { background: var(--bad); box-shadow: 0 0 0 3px #fae3e1; }
+    .pstate .when { font-weight: 500; color: var(--muted); font-size: 0.88rem; }
+    .btn-line {
+      border: 1px solid var(--navy-700); background: #fff; color: var(--navy-700);
+      border-radius: 8px; padding: 0.45rem 0.9rem; cursor: pointer;
+      font-family: inherit; font-size: 0.88rem; font-weight: 700;
+    }
+    .period-edit {
+      background: var(--navy-50); border: 1px solid var(--navy-100);
+      border-top: none; border-radius: 0 0 12px 12px;
+      padding: 1rem; margin-top: -1px; display: flex; gap: 1rem;
+      flex-wrap: wrap; align-items: flex-end;
+    }
+    .period-edit input[type="date"] {
+      margin: 0; padding: 0.5rem 0.6rem; font-size: 0.95rem; min-width: 165px;
+    }
+    .period-edit select { margin: 0; padding: 0.5rem 0.6rem; font-size: 0.95rem; min-width: 190px; }
+    .phelp { flex-basis: 100%; font-size: 0.82rem; color: var(--muted); line-height: 1.65; }
+    .fgroup { display: flex; flex-direction: column; gap: 0.25rem; }
+    .fgroup label { font-size: 0.8rem; color: var(--muted); font-weight: 700; }
+    .fgroup select { margin: 0; padding: 0.5rem 0.6rem; font-size: 0.95rem; min-width: 170px; }
+
+    .tabs { display: flex; gap: 0.3rem; margin: 1rem 0 0; flex-wrap: wrap; }
+    .tab {
+      border: 1px solid var(--line); border-bottom: none; background: #e2e8f4;
+      color: var(--muted); border-radius: 10px 10px 0 0; padding: 0.6rem 1.1rem;
+      cursor: pointer; font-family: inherit; font-size: 0.95rem; font-weight: 700;
+    }
+    .tab[aria-selected="true"] { background: #fff; color: var(--navy); }
+    .panel {
+      background: #fff; border: 1px solid var(--line); border-radius: 0 12px 12px 12px;
+      padding: 1.3rem; min-height: 320px;
+    }
+
+    .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 0.8rem; }
+    .kpi { background: var(--navy-50); border: 1px solid var(--navy-100); border-radius: 12px; padding: 0.9rem 1rem; }
+    .kpi.alt { background: #fdf4ec; border-color: #f3d9c2; }
+    .kpi .k { font-size: 0.8rem; color: var(--muted); font-weight: 700; }
+    .kpi .v { font-size: 1.7rem; font-weight: 800; color: var(--navy); line-height: 1.25; margin-top: 0.2rem; }
+    .kpi .u { font-size: 0.95rem; font-weight: 600; margin-left: 2px; }
+    .kpi .d { font-size: 0.78rem; color: var(--muted); margin-top: 0.1rem; }
+
+    h3.sec {
+      font-size: 1.02rem; color: var(--navy); margin: 1.9rem 0 0.7rem;
+      border-left: 5px solid var(--navy-700); padding-left: 0.55rem;
+    }
+    h3.sec:first-child { margin-top: 0; }
+    .note { font-size: 0.82rem; color: var(--muted); margin: 0.3rem 0 0.8rem; line-height: 1.6; }
+    .callout {
+      background: var(--navy-50); border: 1px solid var(--navy-100); border-radius: 10px;
+      padding: 0.7rem 0.9rem; font-size: 0.85rem; color: var(--navy); margin-bottom: 1rem; line-height: 1.6;
+    }
+
+    table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    th, td { border-bottom: 1px solid var(--line); padding: 0.55rem 0.5rem; text-align: center; }
+    th { background: var(--navy-50); color: var(--navy); font-weight: 700; white-space: nowrap; }
+    td.l, th.l { text-align: left; }
+    tbody tr:hover { background: #f8fafd; }
+    .num { font-variant-numeric: tabular-nums; }
+    .muted { color: var(--muted); font-size: 0.85em; }
+    .unit {
+      display: inline-block; border-radius: 6px; padding: 0.05rem 0.4rem;
+      font-size: 0.75rem; font-weight: 700; white-space: nowrap;
+    }
+    .unit.ev { background: var(--navy-100); color: var(--navy); }
+    .unit.pe { background: #fdeadd; color: var(--warn); }
+    .tag {
+      display: inline-block; background: var(--navy-100); color: var(--navy);
+      border-radius: 6px; padding: 0.1rem 0.45rem; font-size: 0.78rem;
+      font-weight: 700; margin-right: 0.25rem;
+    }
+    .pill { border-radius: 999px; padding: 0.1rem 0.55rem; font-size: 0.8rem; font-weight: 700; }
+    .pill.hi { background: #dcf0e4; color: var(--ok); }
+    .pill.lo { background: #fae3e1; color: var(--bad); }
+    .pill.na { background: #e8ecf3; color: var(--muted); }
+
+    .barrow { display: flex; align-items: center; gap: 0.7rem; margin-bottom: 0.55rem; }
+    .barrow .nm { width: 130px; font-size: 0.9rem; font-weight: 700; flex: none; }
+    .barrow .track { flex: 1; background: #e5eaf3; border-radius: 6px; height: 1.5rem; overflow: hidden; }
+    .barrow .fill { height: 100%; background: var(--navy-700); border-radius: 6px; }
+    .barrow .val { width: 130px; text-align: right; font-size: 0.9rem; font-weight: 700; flex: none; font-variant-numeric: tabular-nums; }
+
+    .stack { display: flex; height: 1.15rem; border-radius: 4px; overflow: hidden; background: #e5eaf3; min-width: 170px; }
+    .stack i { display: block; height: 100%; }
+    .s5 { background: #1f3864; } .s4 { background: #4472a8; } .s3 { background: #a9b8d0; }
+    .s2 { background: #e0a96d; } .s1 { background: #c0564a; }
+    .legend { display: flex; gap: 0.9rem; flex-wrap: wrap; font-size: 0.8rem; color: var(--muted); margin-bottom: 0.7rem; }
+    .legend b { display: inline-block; width: 0.8rem; height: 0.8rem; border-radius: 3px; margin-right: 0.25rem; vertical-align: -1px; }
+
+    .cmt { border: 1px solid var(--line); border-left: 4px solid var(--navy-700); border-radius: 8px; padding: 0.7rem 0.9rem; margin-bottom: 0.6rem; background: #fcfdff; }
+    .cmt.common { border-left-color: #c55a11; }
+    .cmt .h { font-size: 0.82rem; color: var(--muted); margin-bottom: 0.3rem; display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
+    .cmt .h b { color: var(--navy); }
+    .cmt .t { font-size: 0.95rem; line-height: 1.6; white-space: pre-wrap; }
+
+    /* 보고서용 세로형 표 */
+    table.report td.l { vertical-align: middle; }
+    table.report tr.grp td { border-top: 2px solid var(--navy-100); }
+    table.report tr.sum td { background: var(--navy-50); font-weight: 700; }
+
+    /* 교차표 */
+    .tabcap { font-weight: 700; color: var(--navy); margin: 0 0 0.5rem; font-size: 0.95rem; }
+    table.cross th { font-size: 0.82rem; padding: 0.4rem 0.3rem; }
+    table.cross th.sub { background: #e6ecf7; font-weight: 600; }
+    table.cross td { padding: 0.42rem 0.3rem; font-size: 0.86rem; }
+    table.cross td.l, table.cross th.l { white-space: nowrap; min-width: 130px; }
+    table.progs td.l, table.progs th.l { white-space: nowrap; min-width: 140px; }
+    table.progs td { white-space: nowrap; }
+    table.cross tr.sum td { background: var(--navy-50); font-weight: 700; }
+    .warnmark { color: var(--warn); font-weight: 700; cursor: help; }
+    .totalstrip {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 0.2rem 1.1rem;
+      background: var(--navy); color: #fff; border-radius: 10px;
+      padding: 0.6rem 0.9rem; margin-bottom: 0.7rem; font-size: 0.88rem;
+    }
+    .totalstrip > b { font-size: 0.95rem; margin-right: 0.3rem; }
+    .totalstrip span { white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .totalstrip i { font-style: normal; opacity: 0.72; font-size: 0.78rem; margin-right: 0.3rem; }
+    .totalstrip .emph { font-weight: 700; }
+
+    /* 의견 묶음 */
+    .chk { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.88rem;
+           color: var(--muted); font-weight: 700; margin-bottom: 0.8rem; cursor: pointer; }
+    .grp { border: 1px solid var(--line); border-radius: 10px; margin-bottom: 0.5rem; background: #fff; }
+    .grp.hot { border-color: var(--navy-700); }
+    .grphead {
+      display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;
+      padding: 0.6rem 0.8rem; cursor: pointer; font-size: 0.92rem;
+    }
+    .grphead .cnt {
+      background: var(--navy-700); color: #fff; border-radius: 999px;
+      padding: 0.1rem 0.6rem; font-size: 0.82rem; font-weight: 700; flex: none;
+    }
+    .grp.hot .grphead .cnt { background: var(--bad); }
+    .grphead .lab { color: var(--navy); font-weight: 700; }
+    .grptexts { display: none; padding: 0 0.8rem 0.7rem 0.8rem; }
+    .grp.open .grptexts { display: block; }
+    .grptexts .one {
+      border-left: 3px solid var(--navy-100); padding: 0.3rem 0 0.3rem 0.6rem;
+      margin-top: 0.3rem; font-size: 0.9rem; line-height: 1.55; white-space: pre-wrap;
+    }
+
+    /* 작성자 표시 — 주황 계열로 개인정보임을 구분 */
+    .who {
+      display: inline-block; background: #fdeadd; color: var(--warn);
+      border-radius: 6px; padding: 0.05rem 0.45rem; margin-right: 0.4rem;
+      font-size: 0.8rem; font-weight: 700; white-space: nowrap;
+    }
+    .phone {
+      display: inline-block; color: var(--muted); font-size: 0.8rem;
+      margin-right: 0.4rem; font-variant-numeric: tabular-nums;
+    }
+
+    /* 내려받기 링크 상자 */
+    .linkwrap {
+      position: fixed; inset: 0; z-index: 90; display: flex;
+      align-items: center; justify-content: center;
+      background: rgba(21,34,59,0.45); padding: 1rem;
+    }
+    .linkcard {
+      background: #fff; border-radius: 14px; padding: 1.5rem;
+      max-width: 420px; width: 100%; box-shadow: 0 10px 40px rgba(20,35,70,0.25);
+    }
+    .linkcard h3 { margin: 0 0 0.6rem; font-size: 1.1rem; color: var(--navy); }
+    .linkcard p { margin: 0 0 1.1rem; font-size: 0.9rem; color: var(--muted); line-height: 1.6; }
+    .linkgo {
+      display: block; text-align: center; text-decoration: none;
+      background: var(--navy-700); color: #fff; border-radius: 10px;
+      padding: 0.85rem 1rem; font-size: 1rem; font-weight: 700;
+    }
+    .linkgo:hover { background: var(--navy); }
+
+    .empty { text-align: center; color: var(--muted); padding: 3rem 1rem; }
+    .scroll { overflow-x: auto; }
+    @media (max-width: 720px) {
+      .barrow .nm { width: 85px; }
+      .barrow .val { width: 95px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ===== 로그인 ===== -->
+<div id="loginView" class="login">
+  <div class="card">
+    <h2>강의평가 관리자</h2>
+    <p class="sub" id="loginSub"></p>
+    <div class="q" data-key="pw" style="margin-top:1.2rem">
+      <div class="label"><span>관리자 비밀번호</span></div>
+      <input type="password" id="pw" placeholder="비밀번호 입력">
+      <div class="errmsg" id="pwErr">비밀번호가 올바르지 않습니다.</div>
+    </div>
+    <button class="btn" id="btnLogin" style="width:100%;margin-top:1.1rem">로그인</button>
+  </div>
+</div>
+
+<!-- ===== 대시보드 ===== -->
+<div id="appView" class="hidden">
+  <div class="ahead">
+    <div class="in">
+      <h1 id="hTitle">강의평가 결과</h1>
+      <div class="meta" id="hMeta"></div>
+      <div class="sp"></div>
+      <button class="btn-sm" id="btnSheet">구글시트 열기</button>
+      <button class="btn-sm solid" id="btnXlsx">엑셀 집계표 다운로드</button>
+    </div>
+  </div>
+
+  <div class="adm">
+    <div class="period" id="periodBar">
+      <div class="pstate" id="pState">확인 중…</div>
+      <div class="sp"></div>
+      <button class="btn-line" id="btnPeriodToggle">기간 설정</button>
+    </div>
+
+    <div class="period-edit hidden" id="periodEdit">
+      <div class="fgroup">
+        <label for="pFrom">시작일</label>
+        <input type="date" id="pFrom">
+      </div>
+      <div class="fgroup">
+        <label for="pTo">종료일</label>
+        <input type="date" id="pTo">
+      </div>
+      <div class="fgroup">
+        <label for="pMode">상태</label>
+        <select id="pMode">
+          <option value="auto">기간대로 자동</option>
+          <option value="open">지금 열기 (기간 무시)</option>
+          <option value="closed">지금 닫기 (기간 무시)</option>
+        </select>
+      </div>
+      <button class="btn" id="btnPeriodSave" style="min-height:2.6rem;flex:0 0 auto;padding:0 1.4rem;font-size:0.95rem">저장</button>
+      <div class="phelp">
+        종료일 <b>당일 밤 12시까지</b> 접수합니다. 날짜를 비우면 그 방향은 제한하지 않습니다.<br>
+        마감된 뒤에는 어르신 화면에 안내만 뜨고 <b>새 응답도 수정도 되지 않습니다.</b>
+        결과 화면은 마감과 무관하게 언제든 보실 수 있습니다.
+      </div>
+    </div>
+
+    <div class="filters">
+      <div class="fgroup">
+        <label for="fRound">평가차수</label>
+        <select id="fRound"></select>
+      </div>
+      <div class="fgroup">
+        <label for="fDay">요일</label>
+        <select id="fDay"><option value="">전체</option></select>
+      </div>
+      <div class="fgroup">
+        <label for="fProg">프로그램</label>
+        <select id="fProg"><option value="">전체</option></select>
+      </div>
+      <button class="btn" id="btnApply" style="min-height:2.6rem;flex:0 0 auto;padding:0 1.4rem;font-size:0.95rem">조회</button>
+    </div>
+
+    <div class="tabs" id="tabs"></div>
+    <div class="panel" id="panel"><div class="empty">불러오는 중…</div></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+var CFG = <?!= cfg ?>;
+var TOKEN = null;
+var S = null;
+var TAB = 'summary';
+var FILTER = { round: CFG.round, programCode: '', day: '' };
+
+function $(id) { return document.getElementById(id); }
+function el(t, c, h) { var e = document.createElement(t); if (c) e.className = c; if (h !== undefined) e.innerHTML = h; return e; }
+function esc(s) {
+  return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+function n1(v) { return (v === null || v === undefined || v === '') ? '-' : v; }
+
+/* 보고서 표 순서: 매우 불만족 → 매우 만족 */
+var SCALE_ASC = CFG.scale.slice().sort(function (a, b) { return a.v - b.v; });
+
+/** 4.22(.807) 형태 */
+function meanSd(mean, sd) {
+  var s = Number(sd).toFixed(3);
+  if (s.indexOf('0.') === 0) s = s.slice(1);
+  return Number(mean).toFixed(2) + '(' + s + ')';
+}
+
+/** 있음=1 / 없음=0 기준 평균(표준편차). 0.87(.341) 형태 */
+function yesNoMeanSd(x) {
+  function trim0(v) {
+    var s = Number(v).toFixed(3);
+    return s.indexOf('0.') === 0 ? s.slice(1) : s;
+  }
+  return trim0(x.mean) + '(' + trim0(x.sd) + ')';
+}
+function unitTag(u) {
+  return u === '평가'
+    ? '<span class="unit ev">평가건수</span>'
+    : '<span class="unit pe">응답자</span>';
+}
+var tt;
+function toast(m) {
+  var t = $('toast'); t.textContent = m; t.classList.add('show');
+  clearTimeout(tt); tt = setTimeout(function () { t.classList.remove('show'); }, 3200);
+}
+function overlay(m) {
+  if ($('ovl')) return;
+  var o = el('div', 'overlay'); o.id = 'ovl';
+  o.appendChild(el('div', 'spin')); o.appendChild(el('div', '', esc(m)));
+  document.body.appendChild(o);
+}
+function overlayOff() { var o = $('ovl'); if (o) o.remove(); }
+
+/* ================= 로그인 ================= */
+$('loginSub').textContent = CFG.centerName + ' · ' + CFG.fullTitle;
+
+function doLogin() {
+  var pw = $('pw').value;
+  if (!pw) { $('pw').focus(); return; }
+  $('btnLogin').disabled = true;
+  google.script.run
+    .withSuccessHandler(function (r) {
+      $('btnLogin').disabled = false;
+      if (!r.ok) {
+        document.querySelector('.q[data-key="pw"]').classList.add('invalid');
+        $('pwErr').textContent = r.message;
+        return;
+      }
+      TOKEN = r.token;
+      $('loginView').classList.add('hidden');
+      $('appView').classList.remove('hidden');
+      initApp();
+    })
+    .withFailureHandler(function () {
+      $('btnLogin').disabled = false;
+      toast('로그인 중 오류가 발생했습니다.');
+    })
+    .adminLogin(pw);
+}
+$('btnLogin').addEventListener('click', doLogin);
+$('pw').addEventListener('keydown', function (e) {
+  document.querySelector('.q[data-key="pw"]').classList.remove('invalid');
+  if (e.key === 'Enter') doLogin();
+});
+
+/* ================= 초기화 ================= */
+var TABS = [
+  { id: 'summary',  name: '요약' },
+  { id: 'items',    name: '문항별 통계' },
+  { id: 'programs', name: '프로그램별' },
+  { id: 'comments', name: '주관식 의견' },
+  { id: 'wishes',   name: '희망강좌 · 키워드' }
+];
+
+function initApp() {
+  var tabs = $('tabs');
+  tabs.innerHTML = '';
+  TABS.forEach(function (t) {
+    var b = el('button', 'tab', esc(t.name));
+    b.type = 'button';
+    b.setAttribute('aria-selected', String(t.id === TAB));
+    b.addEventListener('click', function () {
+      TAB = t.id;
+      Array.prototype.forEach.call(tabs.children, function (x, i) {
+        x.setAttribute('aria-selected', String(TABS[i].id === TAB));
+      });
+      draw();
+    });
+    tabs.appendChild(b);
+  });
+
+  google.script.run
+    .withSuccessHandler(function (o) {
+      var r = $('fRound'); r.innerHTML = '';
+      o.rounds.forEach(function (x) {
+        var op = el('option', '', esc(x)); op.value = x;
+        if (x === o.currentRound) op.selected = true;
+        r.appendChild(op);
+      });
+      var d = $('fDay');
+      o.days.forEach(function (x) {
+        var op = el('option', '', esc(x + '요일')); op.value = x; d.appendChild(op);
+      });
+      var p = $('fProg');
+      o.programs.forEach(function (x) {
+        var op = el('option', '', esc(x.name + ' (' + x.day + ' ' + x.time + ')'));
+        op.value = x.code; p.appendChild(op);
+      });
+      loadPeriod();
+      loadStats();
+    })
+    .withFailureHandler(function (e) { toast(String(e.message || e)); })
+    .getFilterOptions(TOKEN);
+}
+
+$('btnApply').addEventListener('click', function () {
+  FILTER = { round: $('fRound').value, day: $('fDay').value, programCode: $('fProg').value };
+  loadStats();
+});
+
+/* ================= 평가 기간 ================= */
+
+var MODE_LABEL = {
+  auto: '기간대로 자동', open: '지금 열기 (기간 무시)', closed: '지금 닫기 (기간 무시)'
+};
+
+function paintPeriod(p) {
+  var when = (p.from || p.to)
+    ? (p.from || '제한 없음') + ' ~ ' + (p.to || '제한 없음')
+    : '기간 미설정 (계속 접수)';
+
+  $('pState').innerHTML =
+    '<span class="dot2 ' + (p.open ? 'on' : 'off') + '"></span>' +
+    '평가 접수 ' + (p.open ? '진행 중' : '마감') +
+    ' <span class="when">· ' + esc(when) +
+    (p.mode !== 'auto' ? ' · ' + esc(MODE_LABEL[p.mode]) : '') + '</span>';
+
+  $('pFrom').value = p.from || '';
+  $('pTo').value = p.to || '';
+  $('pMode').value = p.mode || 'auto';
+}
+
+function loadPeriod() {
+  google.script.run
+    .withSuccessHandler(paintPeriod)
+    .withFailureHandler(function (e) { $('pState').textContent = String(e.message || e); })
+    .getPeriodInfo(TOKEN);
+}
+
+$('btnPeriodToggle').addEventListener('click', function () {
+  $('periodEdit').classList.toggle('hidden');
+});
+
+$('btnPeriodSave').addEventListener('click', function () {
+  $('btnPeriodSave').disabled = true;
+  google.script.run
+    .withSuccessHandler(function (p) {
+      $('btnPeriodSave').disabled = false;
+      paintPeriod(p);
+      $('periodEdit').classList.add('hidden');
+      toast(p.open ? '평가 접수가 열렸습니다.' : '평가 접수가 마감되었습니다.');
+    })
+    .withFailureHandler(function (e) {
+      $('btnPeriodSave').disabled = false;
+      toast(String(e.message || e));
+    })
+    .setPeriod(TOKEN, $('pFrom').value, $('pTo').value, $('pMode').value);
+});
+
+function loadStats() {
+  $('panel').innerHTML = '<div class="empty">불러오는 중…</div>';
+  google.script.run
+    .withSuccessHandler(function (s) { S = s; draw(); })
+    .withFailureHandler(function (e) {
+      $('panel').innerHTML = '<div class="empty">' + esc(String(e.message || e)) + '</div>';
+    })
+    .getStats(TOKEN, FILTER);
+}
+
+/* ================= 그리기 ================= */
+function draw() {
+  if (!S) return;
+  $('hMeta').textContent = S.meta.round + ' · 응답자 ' + S.meta.respondentN +
+    '명 / 평가 ' + S.meta.evalN + '건 · ' + S.meta.generatedAt + ' 기준';
+
+  var p = $('panel');
+  p.innerHTML = '';
+  if (!S.meta.evalN) {
+    p.appendChild(el('div', 'empty', '해당 조건에 응답이 없습니다.'));
+    return;
+  }
+  ({ summary: drawSummary, items: drawItems, programs: drawPrograms,
+     comments: drawComments, wishes: drawWishes })[TAB](p);
+}
+
+function kpi(k, v, u, d, alt) {
+  var e = el('div', 'kpi' + (alt ? ' alt' : ''));
+  e.appendChild(el('div', 'k', esc(k)));
+  e.appendChild(el('div', 'v', esc(v) + (u ? '<span class="u">' + esc(u) + '</span>' : '')));
+  if (d) e.appendChild(el('div', 'd', esc(d)));
+  return e;
+}
+
+function unitCallout() {
+  return el('div', 'callout',
+    '집계 단위가 두 가지입니다. ' +
+    '<span class="unit ev">평가건수</span> 는 과목별 평가 1건을 1로 셉니다(3과목 수강자 = 3건). ' +
+    '<span class="unit pe">응답자</span> 는 사람 1명을 1로 셉니다(1인 1표). ' +
+    '전반적 만족도·희망강좌 등 기관 전체 문항은 응답자 기준이라 다과목 수강자가 과대 대표되지 않습니다.');
+}
+
+function drawSummary(p) {
+  var m = S.meta, pt = S.participation;
+  p.appendChild(unitCallout());
+
+  p.appendChild(el('h3', 'sec', '전체 개요'));
+  var g = el('div', 'kpis');
+  g.appendChild(kpi('응답자 수', m.respondentN, '명', '과목을 1개 이상 평가', true));
+  g.appendChild(kpi('평가 건수', m.evalN, '건', '과목별 평가 합계'));
+  g.appendChild(kpi('1인 평균 과목 수', m.avgPrograms, '과목', ''));
+  g.appendChild(kpi('응답률',
+    m.responseRate === null ? '-' : m.responseRate,
+    m.responseRate === null ? '' : '%',
+    m.responseRate === null ? '프로그램 시트에 수강인원 입력 필요' : '수강인원 합계 ' + m.totalQuota + '명 기준'));
+  g.appendChild(kpi('전반적 만족도', m.overallMean, '/ 5',
+    '응답자 ' + m.commonN + '명 · 긍정 ' + m.overallPositive + '%', true));
+  g.appendChild(kpi('과목 평가 평균', m.courseMean, '/ 5', m.courseScore100 + '점 (100점 환산)'));
+  p.appendChild(g);
+
+  p.appendChild(el('h3', 'sec', '영역별 만족도'));
+  S.sections.forEach(function (x) {
+    var r = el('div', 'barrow');
+    r.appendChild(el('div', 'nm', esc(x.key)));
+    var tr = el('div', 'track');
+    var f = el('div', 'fill');
+    f.style.width = (x.mean / 5 * 100) + '%';
+    tr.appendChild(f);
+    r.appendChild(tr);
+    r.appendChild(el('div', 'val', x.mean + ' <span class="muted">(' + x.score100 + '점)</span>'));
+    p.appendChild(r);
+  });
+
+  var t = el('table');
+  t.innerHTML =
+    '<thead><tr><th class="l">영역</th><th>집계 단위</th><th>문항수</th><th>응답수</th>' +
+    '<th>평균</th><th>표준편차</th><th>100점 환산</th><th>긍정응답률</th></tr></thead><tbody>' +
+    S.sections.map(function (x) {
+      return '<tr><td class="l"><b>' + esc(x.key) + '</b> <span class="muted">' + esc(x.title) + '</span></td>' +
+        '<td>' + unitTag(x.unit) + '</td>' +
+        '<td class="num">' + x.itemCount + '</td><td class="num">' + x.n + '</td>' +
+        '<td class="num"><b>' + x.mean + '</b></td><td class="num">' + x.sd + '</td>' +
+        '<td class="num">' + x.score100 + '</td>' +
+        '<td><span class="pill ' + (x.positiveRate >= 80 ? 'hi' : x.positiveRate < 60 ? 'lo' : 'na') + '">' +
+        x.positiveRate + '%</span></td></tr>';
+    }).join('') + '</tbody>';
+  p.appendChild(el('div', 'scroll')).appendChild(t);
+
+  p.appendChild(el('h3', 'sec', '참여 의향'));
+  var g2 = el('div', 'kpis');
+  S.intents.forEach(function (x) {
+    g2.appendChild(kpi(x.text, x.yesRate, '%',
+      '있음 ' + x.yes + ' / 없음 ' + x.no +
+      ' · 평균(표준편차) ' + yesNoMeanSd(x) +
+      ' · ' + (x.unit === '평가' ? '평가건수 기준' : '응답자 기준'),
+      x.unit !== '평가'));
+  });
+  p.appendChild(g2);
+
+  p.appendChild(el('h3', 'sec', '참여도'));
+  p.appendChild(el('div', 'note',
+    '선택한 과목을 끝까지 평가했는지 보여줍니다. 완주율이 낮으면 안내나 문항 길이를 점검해 보세요.'));
+  var g3 = el('div', 'kpis');
+  g3.appendChild(kpi('완주율', pt.completionRate === null ? '-' : pt.completionRate, '%',
+    '완료 ' + pt.completedTotal + ' ÷ 선택 ' + pt.selectedTotal + '과목'));
+  g3.appendChild(kpi('중간에 그만둔 응답자', pt.incompleteRespondents, '명', '선택 과목을 다 채우지 않음'));
+  g3.appendChild(kpi('공통문항 미완료', pt.commonMissing, '명', ''));
+  g3.appendChild(kpi('1과목만 평가', pt.onlyOne, '명', ''));
+  p.appendChild(g3);
+
+  p.appendChild(el('h3', 'sec', '수정 현황'));
+  p.appendChild(el('div', 'note',
+    '평가 기간 중에는 응답자가 같은 성함·번호로 다시 들어와 고칠 수 있습니다. ' +
+    '고쳐도 줄이 늘지 않고 <b>덮어쓰기</b>되며, 고치기 전 내용은 구글시트 ' +
+    '「수정이력」 시트에 남습니다. <b>보고서는 평가 마감 후에 뽑으세요.</b>'));
+  var g4 = el('div', 'kpis');
+  g4.appendChild(kpi('수정된 과목 평가', pt.editedEvals, '건',
+    '전체 ' + pt.completedTotal + '건 중 ' + pt.editedRate + '%'));
+  g4.appendChild(kpi('수정된 공통문항', pt.editedCommon, '명', ''));
+  g4.appendChild(kpi('총 수정 횟수', pt.editTotal, '회', '한 건을 여러 번 고치면 중복 집계'));
+  g4.appendChild(kpi('마지막 수정', pt.lastEditAt || '없음', '', ''));
+  p.appendChild(g4);
+
+  if (pt.distribution.length) {
+    var maxP = 0;
+    pt.distribution.forEach(function (d) { if (d.people > maxP) maxP = d.people; });
+    p.appendChild(el('div', 'note', '평가 과목 수별 응답자 분포'));
+    pt.distribution.forEach(function (d) {
+      var r = el('div', 'barrow');
+      r.appendChild(el('div', 'nm', d.count + '과목'));
+      var tr = el('div', 'track');
+      var f = el('div', 'fill');
+      f.style.width = (d.people / maxP * 100) + '%';
+      tr.appendChild(f);
+      r.appendChild(tr);
+      r.appendChild(el('div', 'val', d.people + '명 (' +
+        (pt.respondentN ? Math.round(d.people / pt.respondentN * 1000) / 10 : 0) + '%)'));
+      p.appendChild(r);
+    });
+  }
+}
+
+function legendBox() {
+  var L = [['s5', '매우 만족'], ['s4', '만족'], ['s3', '보통'], ['s2', '불만족'], ['s1', '매우 불만족']];
+  return el('div', 'legend', L.map(function (x) {
+    return '<span><b class="' + x[0] + '"></b>' + x[1] + '</span>';
+  }).join(''));
+}
+
+function stackBar(it) {
+  var names = { 5: '매우 만족', 4: '만족', 3: '보통', 2: '불만족', 1: '매우 불만족' };
+  var seg = [5, 4, 3, 2, 1].map(function (k) {
+    return '<i class="s' + k + '" style="width:' + it.pct[k] + '%" title="' +
+      names[k] + ' ' + it.freq[k] + '명 (' + it.pct[k] + '%)"></i>';
+  }).join('');
+  return '<div class="stack">' + seg + '</div>';
+}
+
+function drawItems(p) {
+  p.appendChild(unitCallout());
+  p.appendChild(el('h3', 'sec', '문항별 통계'));
+  p.appendChild(el('div', 'note',
+    '평균은 5점 만점 · 표준편차는 표본 기준(n−1) · 긍정응답률 = (매우 만족 + 만족) ÷ 응답수'));
+  p.appendChild(legendBox());
+
+  var t = el('table');
+  t.innerHTML =
+    '<thead><tr><th>번호</th><th class="l">문항</th><th>영역</th><th>집계 단위</th><th>응답</th>' +
+    '<th>평균</th><th>표준편차</th><th>100점</th><th>긍정</th><th>부정</th>' +
+    '<th style="min-width:180px">응답 분포</th></tr></thead><tbody>' +
+    S.items.map(function (it) {
+      return '<tr><td class="num">' + esc(it.id) + '</td>' +
+        '<td class="l">' + esc(it.text) + '</td>' +
+        '<td>' + esc(it.section) + '</td>' +
+        '<td>' + unitTag(it.unit) + '</td>' +
+        '<td class="num">' + it.n + '</td>' +
+        '<td class="num"><b>' + it.mean + '</b></td>' +
+        '<td class="num">' + it.sd + '</td>' +
+        '<td class="num">' + it.score100 + '</td>' +
+        '<td><span class="pill ' + (it.positiveRate >= 80 ? 'hi' : it.positiveRate < 60 ? 'lo' : 'na') + '">' + it.positiveRate + '%</span></td>' +
+        '<td class="num muted">' + it.negativeRate + '%</td>' +
+        '<td>' + stackBar(it) + '</td></tr>';
+    }).join('') + '</tbody>';
+  p.appendChild(el('div', 'scroll')).appendChild(t);
+
+  p.appendChild(el('h3', 'sec', '참여 의향'));
+  p.appendChild(el('div', 'note',
+    '평균·표준편차는 <b>있음 = 1, 없음 = 0</b> 으로 계산한 값입니다. ' +
+    '이때 <b>평균은 곧 「있음」 비율</b>과 같습니다. 예) 평균 0.865 = 있음 86.5%'));
+
+  var t3 = el('table');
+  t3.innerHTML =
+    '<thead><tr><th>번호</th><th class="l">문항</th><th>집계 단위</th><th>있음</th><th>없음</th>' +
+    '<th>응답수</th><th>있음 비율</th><th>평균(표준편차)</th></tr></thead><tbody>' +
+    S.intents.map(function (x) {
+      return '<tr><td class="num">' + esc(x.id) + '</td><td class="l">' + esc(x.text) + '</td>' +
+        '<td>' + unitTag(x.unit) + '</td>' +
+        '<td class="num">' + x.yes + '</td><td class="num">' + x.no + '</td>' +
+        '<td class="num">' + x.n + '</td>' +
+        '<td><span class="pill ' + (x.yesRate >= 80 ? 'hi' : x.yesRate < 60 ? 'lo' : 'na') + '">' + x.yesRate + '%</span></td>' +
+        '<td class="num"><b>' + yesNoMeanSd(x) + '</b></td></tr>';
+    }).join('') + '</tbody>';
+  p.appendChild(el('div', 'scroll')).appendChild(t3);
+
+  /* 보고서용 참여 의향 표 */
+  p.appendChild(el('h3', 'sec', '참여 의향 — 보고서용'));
+  var t4 = el('table', 'report');
+  var body4 = '';
+  S.intents.forEach(function (x) {
+    [['있음 (O)', x.yes, x.yesRate], ['없음 (X)', x.no, x.noRate]].forEach(function (r, i) {
+      body4 += '<tr' + (i === 0 ? ' class="grp"' : '') + '>' +
+        (i === 0
+          ? '<td class="l" rowspan="3"><b>' + esc(x.text) + '</b>' +
+            '<div class="muted">' + esc(x.id) + ' · n=' + x.n +
+            ' · ' + (x.unit === '평가' ? '평가건수' : '응답자') + ' 기준</div></td>'
+          : '') +
+        '<td>' + r[0] + '</td><td class="num">' + r[1] + '</td><td class="num">' + r[2] + '</td></tr>';
+    });
+    body4 += '<tr class="sum"><td>평균(표준편차)</td>' +
+             '<td class="num" colspan="2"><b>' + yesNoMeanSd(x) + '</b></td></tr>';
+  });
+  t4.innerHTML =
+    '<thead><tr><th class="l">구분</th><th>응답</th><th>빈도</th><th>비율(%)</th></tr></thead>' +
+    '<tbody>' + body4 + '</tbody>';
+  p.appendChild(el('div', 'scroll')).appendChild(t4);
+
+  p.appendChild(el('h3', 'sec', '문항별 응답 분포 — 보고서용'));
+  p.appendChild(el('div', 'note',
+    '사업보고서 표 형식 그대로입니다. 끌어서 복사하면 한글·엑셀에 그대로 붙습니다. (단위: 명, %)'));
+
+  var t2 = el('table', 'report');
+  var body = '';
+  S.items.forEach(function (it) {
+    SCALE_ASC.forEach(function (sc, i) {
+      body += '<tr' + (i === 0 ? ' class="grp"' : '') + '>' +
+        (i === 0
+          ? '<td class="l" rowspan="' + (SCALE_ASC.length + 1) + '"><b>' + esc(it.text) + '</b>' +
+            '<div class="muted">' + esc(it.id) + ' · ' + esc(it.section) +
+            ' · n=' + it.n + ' · ' + (it.unit === '평가' ? '평가건수' : '응답자') + ' 기준</div></td>'
+          : '') +
+        '<td>' + esc(sc.label) + '</td>' +
+        '<td class="num">' + it.freq[sc.v] + '</td>' +
+        '<td class="num">' + it.pct[sc.v] + '</td></tr>';
+    });
+    body += '<tr class="sum"><td>평균(표준편차)</td>' +
+            '<td class="num" colspan="2"><b>' + meanSd(it.mean, it.sd) + '</b></td></tr>';
+  });
+  t2.innerHTML =
+    '<thead><tr><th class="l">구분</th><th>척도</th><th>빈도</th><th>비율(%)</th></tr></thead>' +
+    '<tbody>' + body + '</tbody>';
+  p.appendChild(el('div', 'scroll')).appendChild(t2);
+}
+
+function drawPrograms(p) {
+  p.appendChild(el('h3', 'sec', '프로그램별 집계'));
+  p.appendChild(el('div', 'note',
+    '평가 ' + S.meta.minN + '건 미만인 프로그램은 개인 식별 우려가 있어 개별 수치를 표시하지 않습니다. · 과목평균 내림차순'));
+
+  var secKeys = S.sections.filter(function (x) { return x.key !== '종합'; })
+                          .map(function (x) { return x.key; });
+
+  var t = el('table', 'progs');
+  t.innerHTML =
+    '<thead><tr><th>순위</th><th class="l">프로그램</th><th>요일/시간</th><th>강사</th>' +
+    '<th>평가건수</th><th>응답률</th>' +
+    secKeys.map(function (k) { return '<th>' + esc(k) + '</th>'; }).join('') +
+    '<th>과목평균</th><th>100점</th><th>긍정</th><th>재참여</th></tr></thead><tbody>' +
+    S.programs.map(function (x) {
+      if (!x.disclosed) {
+        return '<tr><td class="muted">-</td><td class="l">' + esc(x.name) + '</td>' +
+          '<td class="muted">' + esc(x.day + ' ' + x.time) + '</td><td>' + esc(x.teacher) + '</td>' +
+          '<td class="num">' + x.n + '</td><td class="num">' + n1(x.responseRate) + '</td>' +
+          '<td class="muted" colspan="' + (secKeys.length + 4) + '">소수응답 (' + x.n +
+          '건 &lt; ' + S.meta.minN + '건) — 개별 수치 비공개</td></tr>';
+      }
+      return '<tr><td class="num"><b>' + x.rank + '</b></td><td class="l"><b>' + esc(x.name) + '</b></td>' +
+        '<td class="muted">' + esc(x.day + ' ' + x.time) + '</td><td>' + esc(x.teacher) + '</td>' +
+        '<td class="num">' + x.n + '</td><td class="num">' + n1(x.responseRate) + '</td>' +
+        secKeys.map(function (k) { return '<td class="num">' + x.sectionMeans[k] + '</td>'; }).join('') +
+        '<td class="num"><b>' + x.courseMean + '</b></td>' +
+        '<td class="num">' + x.score100 + '</td>' +
+        '<td><span class="pill ' + (x.positiveRate >= 80 ? 'hi' : x.positiveRate < 60 ? 'lo' : 'na') + '">' + x.positiveRate + '%</span></td>' +
+        '<td class="num">' + (x.rejoinRate === null ? '-' : x.rejoinRate + '%') + '</td></tr>';
+    }).join('') + '</tbody>';
+  p.appendChild(el('div', 'scroll')).appendChild(t);
+
+  /* ---- 문항 × 프로그램 교차표 (보고서 <표2-1> 형식) ---- */
+  p.appendChild(el('h3', 'sec', '문항별 × 프로그램 교차표'));
+  p.appendChild(el('div', 'note',
+    '문항을 고르면 프로그램마다 응답 분포·평균·표준편차가 나옵니다. (단위: 명, %) · ' +
+    '⚠ 표시는 평가 ' + S.meta.minN + '건 미만이라 개별 공개에 주의가 필요한 과목입니다.'));
+
+  if (!S.crossTabs || !S.crossTabs.length) {
+    p.appendChild(el('div', 'empty', '교차표를 만들 응답이 없습니다.'));
+    return;
+  }
+
+  var bar = el('div', 'filters');
+  bar.style.margin = '0 0 1rem';
+  var g = el('div', 'fgroup');
+  g.appendChild(el('label', '', '문항'));
+  var sel = el('select');
+  sel.style.minWidth = '420px';
+  S.crossTabs.forEach(function (ct, i) {
+    var op = el('option', '', esc(ct.id + '. ' + ct.text));
+    op.value = String(i);
+    sel.appendChild(op);
+  });
+  g.appendChild(sel);
+  bar.appendChild(g);
+  p.appendChild(bar);
+
+  var holder = el('div');
+  p.appendChild(holder);
+
+  function drawCross() {
+    var ct = S.crossTabs[Number(sel.value) || 0];
+    holder.innerHTML = '';
+
+    var h1 = '<tr><th class="l" rowspan="2">구분</th>' +
+      SCALE_ASC.map(function (sc) { return '<th colspan="2">' + esc(sc.label) + '</th>'; }).join('') +
+      '<th rowspan="2">응답수</th><th rowspan="2">응답률<br>(%)</th>' +
+      '<th rowspan="2">평균</th><th rowspan="2">표준<br>편차</th></tr>';
+    var h2 = '<tr>' + SCALE_ASC.map(function () {
+      return '<th class="sub">빈도</th><th class="sub">%</th>';
+    }).join('') + '</tr>';
+
+    function cells(r) {
+      return SCALE_ASC.map(function (sc) {
+        return '<td class="num">' + r.freq[sc.v] + '</td>' +
+               '<td class="num muted">' + r.pct[sc.v] + '</td>';
+      }).join('');
+    }
+
+    var body = ct.rows.map(function (r) {
+      return '<tr><td class="l">' + esc(r.name) +
+        (r.lowN ? ' <span class="warnmark" title="평가 ' + S.meta.minN + '건 미만">⚠</span>' : '') +
+        '</td>' + cells(r) +
+        '<td class="num">' + r.n + '</td>' +
+        '<td class="num">' + n1(r.responseRate) + '</td>' +
+        '<td class="num"><b>' + r.mean + '</b></td>' +
+        '<td class="num">' + r.sd + '</td></tr>';
+    }).join('');
+
+    var tot = ct.total;
+    body += '<tr class="sum"><td class="l"><b>전체</b></td>' + cells(tot) +
+      '<td class="num"><b>' + tot.n + '</b></td><td class="num">-</td>' +
+      '<td class="num"><b>' + tot.mean + '</b></td>' +
+      '<td class="num">' + tot.sd + '</td></tr>';
+
+    holder.appendChild(el('div', 'tabcap', '&lt;' + esc(ct.id) + '&gt; ' + esc(ct.text)));
+
+    // 전체 행은 표 맨 아래에 있지만, 위에서도 바로 보이도록 요약 띠를 둡니다
+    var strip = el('div', 'totalstrip');
+    strip.innerHTML =
+      '<b>전체</b>' +
+      SCALE_ASC.map(function (sc) {
+        return '<span><i>' + esc(sc.label) + '</i>' +
+               tot.freq[sc.v] + '명 (' + tot.pct[sc.v] + '%)</span>';
+      }).join('') +
+      '<span class="emph"><i>응답수</i>' + tot.n + '명</span>' +
+      '<span class="emph"><i>평균</i>' + tot.mean + '</span>' +
+      '<span class="emph"><i>표준편차</i>' + tot.sd + '</span>';
+    holder.appendChild(strip);
+
+    var tt2 = el('table', 'cross');
+    tt2.innerHTML = '<thead>' + h1 + h2 + '</thead><tbody>' + body + '</tbody>';
+    holder.appendChild(el('div', 'scroll')).appendChild(tt2);
+  }
+
+  sel.addEventListener('change', drawCross);
+  drawCross();
+}
+
+function drawComments(p) {
+  /* ---- 같은 뜻의 의견 묶음 ---- */
+  p.appendChild(el('h3', 'sec', '같은 의견 묶음 · 빈도'));
+  p.appendChild(el('div', 'note',
+    '같은 뜻의 의견을 묶어 건수를 셉니다. 예) "수업시간이 더 길었으면 좋겠음" + "수업연장" → 2건<br>' +
+    '<b>과목이 다르면 절대 같은 묶음이 되지 않습니다.</b> ' +
+    '묶음을 누르면 원문을 모두 볼 수 있으니 반드시 확인하고 쓰세요. ' +
+    '분류 기준은 Config.gs 의 OPINION_RULES 에서 고칠 수 있습니다.'));
+
+  if (!S.opinions || !S.opinions.length) {
+    p.appendChild(el('div', 'empty', '묶을 의견이 없습니다.'));
+  } else {
+    var only2 = el('label', 'chk');
+    only2.innerHTML = '<input type="checkbox" id="chkMulti"> 2건 이상만 보기';
+    p.appendChild(only2);
+
+    var list2 = el('div');
+    p.appendChild(list2);
+
+    function drawGroups() {
+      var multi = document.getElementById('chkMulti').checked;
+      var gs = S.opinions.filter(function (g) { return !multi || g.count >= 2; });
+      list2.innerHTML = '';
+      if (!gs.length) { list2.appendChild(el('div', 'empty', '해당하는 묶음이 없습니다.')); return; }
+
+      list2.appendChild(el('div', 'note', '총 ' + gs.length + '개 묶음'));
+      gs.forEach(function (g) {
+        var box = el('div', 'grp' + (g.count >= 2 ? ' hot' : ''));
+        var head = el('div', 'grphead');
+        head.innerHTML =
+          '<span class="cnt">' + g.count + '건</span>' +
+          '<b>' + esc(g.programName) + '</b>' +
+          '<span class="lab">' + esc(g.label) + '</span>' +
+          '<span class="muted">· ' + esc(g.method) + ' · ' + esc(g.qids.join(', ')) + '</span>';
+        box.appendChild(head);
+
+        var texts = el('div', 'grptexts');
+        g.entries.forEach(function (e) {
+          texts.appendChild(el('div', 'one',
+            '<span class="who">' + esc(e.name || '(이름없음)') + '</span>' + esc(e.text)));
+        });
+        box.appendChild(texts);
+
+        head.addEventListener('click', function () { box.classList.toggle('open'); });
+        if (g.count >= 2) box.classList.add('open');
+        list2.appendChild(box);
+      });
+    }
+    only2.querySelector('input').addEventListener('change', drawGroups);
+    drawGroups();
+  }
+
+  /* ---- 원문 전체 ---- */
+  p.appendChild(el('h3', 'sec', '주관식 의견 원문'));
+  p.appendChild(el('div', 'note',
+    '과목별 의견(Q5·Q7·Q9)은 해당 과목에, 기관 전체 의견(Q13·Q14)은 「(기관 전체)」로 표시됩니다.'));
+
+  p.appendChild(el('div', 'callout',
+    '⚠ 아래 의견에는 <b>작성자 성함·연락처</b>가 함께 표시됩니다. ' +
+    '엑셀로 내보내 강사나 외부 기관에 전달하실 때는 <b>성함·연락처 열(주황색)을 반드시 삭제</b>하고 주세요.'));
+
+  var progs = {}, tags = {}, labels = [], names = {};
+  S.comments.forEach(function (c) {
+    progs[c.programName] = true;
+    if (c.name) names[c.name] = true;
+    c.tags.forEach(function (t) { tags[t] = true; });
+    if (labels.indexOf(c.label) === -1) labels.push(c.label);
+  });
+
+  var bar = el('div', 'filters');
+  bar.style.margin = '0 0 1rem';
+
+  function sel(label, opts, onChange) {
+    var g = el('div', 'fgroup');
+    g.appendChild(el('label', '', esc(label)));
+    var s = el('select');
+    var all = el('option', '', '전체');
+    all.value = '';
+    s.appendChild(all);
+    opts.forEach(function (o) { var op = el('option', '', esc(o)); op.value = o; s.appendChild(op); });
+    s.addEventListener('change', onChange);
+    g.appendChild(s);
+    bar.appendChild(g);
+    return s;
+  }
+
+  var qsel = sel('문항', labels, redraw);
+  var psel = sel('프로그램', Object.keys(progs).sort(), redraw);
+  var nsel = sel('작성자', Object.keys(names).sort(), redraw);
+  var tsel = sel('키워드', Object.keys(tags).sort(), redraw);
+
+  p.appendChild(bar);
+  var list = el('div');
+  p.appendChild(list);
+
+  function redraw() {
+    var f = S.comments.filter(function (c) {
+      if (qsel.value && c.label !== qsel.value) return false;
+      if (psel.value && c.programName !== psel.value) return false;
+      if (nsel.value && c.name !== nsel.value) return false;
+      if (tsel.value && c.tags.indexOf(tsel.value) === -1) return false;
+      return true;
+    });
+    list.innerHTML = '';
+    if (!f.length) { list.appendChild(el('div', 'empty', '해당 조건의 의견이 없습니다.')); return; }
+
+    list.appendChild(el('div', 'note', '총 ' + f.length + '건'));
+    f.forEach(function (c) {
+      var e = el('div', 'cmt' + (c.unit === '응답자' ? ' common' : ''));
+      e.appendChild(el('div', 'h',
+        '<span class="who">' + esc(c.name || '(이름없음)') + '</span>' +
+        (c.phone ? '<span class="phone">' + esc(c.phone) + '</span>' : '') +
+        '<b>' + esc(c.programName) + '</b>' +
+        (c.teacher ? ' <span>· ' + esc(c.teacher) + '</span>' : '') +
+        ' <span>· ' + esc(c.label) + '</span>' +
+        (c.date ? ' <span>· ' + esc(c.date) + '</span>' : '') +
+        (c.tags.length ? ' ' + c.tags.map(function (t) { return '<span class="tag">' + esc(t) + '</span>'; }).join('') : '')));
+      e.appendChild(el('div', 't', esc(c.text)));
+      list.appendChild(e);
+    });
+  }
+  redraw();
+}
+
+function drawWishes(p) {
+  p.appendChild(el('h3', 'sec', '신규 개설 희망 강좌'));
+  p.appendChild(el('div', 'note',
+    '응답자 기준(1인 1표)입니다. 표기가 다른 유사 응답(요가 / 요가교실 / 요가반)은 하나로 묶어 집계합니다.'));
+
+  if (!S.wishes.length) {
+    p.appendChild(el('div', 'empty', '작성된 희망 강좌가 없습니다.'));
+  } else {
+    var max = S.wishes[0].count;
+    S.wishes.slice(0, 30).forEach(function (w, i) {
+      var r = el('div', 'barrow');
+      r.appendChild(el('div', 'nm', (i + 1) + '. ' + esc(w.label)));
+      var tr = el('div', 'track');
+      var f = el('div', 'fill');
+      f.style.width = (w.count / max * 100) + '%';
+      tr.appendChild(f);
+      r.appendChild(tr);
+      r.appendChild(el('div', 'val', w.count + '명'));
+      r.title = w.variants.join(', ');
+      p.appendChild(r);
+    });
+  }
+
+  p.appendChild(el('h3', 'sec', '주관식 키워드 분류'));
+  p.appendChild(el('div', 'note',
+    '모든 주관식 응답에서 키워드가 언급된 응답자 수입니다. 한 응답자가 여러 키워드에 중복 집계될 수 있습니다.'));
+  if (!S.keywords.length) {
+    p.appendChild(el('div', 'empty', '분류된 키워드가 없습니다.'));
+    return;
+  }
+  var kmax = S.keywords[0].count;
+  S.keywords.forEach(function (k) {
+    var r = el('div', 'barrow');
+    r.appendChild(el('div', 'nm', esc(k.tag)));
+    var tr = el('div', 'track');
+    var f = el('div', 'fill');
+    f.style.width = (k.count / kmax * 100) + '%';
+    tr.appendChild(f);
+    r.appendChild(tr);
+    r.appendChild(el('div', 'val', k.count + '명 (' + k.pct + '%)'));
+    p.appendChild(r);
+  });
+}
+
+/* ================= 내보내기 =================
+   주의: 서버에 다녀온 뒤 window.open 을 부르면 브라우저가 팝업으로 보고 막습니다.
+   그래서 링크를 화면에 띄우고, 사용자가 직접 누르게 합니다. */
+
+function showLinkBox(title, url, label, note) {
+  var old = $('linkbox');
+  if (old) old.remove();
+
+  var box = el('div', 'linkwrap');
+  box.id = 'linkbox';
+
+  var card = el('div', 'linkcard');
+  card.appendChild(el('h3', '', esc(title)));
+  if (note) card.appendChild(el('p', '', note));
+
+  var a = el('a', 'linkgo', esc(label));
+  a.href = url;
+  a.target = '_blank';
+  a.rel = 'noopener';
+  card.appendChild(a);
+
+  var close = el('button', 'btn-line');
+  close.type = 'button';
+  close.textContent = '닫기';
+  close.style.cssText = 'width:100%;margin-top:0.6rem';
+  close.addEventListener('click', function () { box.remove(); });
+  card.appendChild(close);
+
+  box.appendChild(card);
+  box.addEventListener('click', function (ev) { if (ev.target === box) box.remove(); });
+  document.body.appendChild(box);
+}
+
+$('btnXlsx').addEventListener('click', function () {
+  overlay('집계표를 만드는 중입니다…');
+  $('btnXlsx').disabled = true;
+  google.script.run
+    .withSuccessHandler(function (r) {
+      overlayOff();
+      $('btnXlsx').disabled = false;
+      if (!r || !r.ok) { toast('집계표 생성에 실패했습니다.'); return; }
+      showLinkBox('집계표를 새로 만들었습니다', r.xlsxUrl, '엑셀 파일 내려받기',
+        '기준 시각: <b>' + esc(r.generatedAt) + '</b><br>' +
+        '아래를 누르면 <b>.xlsx</b> 파일이 내려받아집니다.<br>' +
+        '스프레드시트의 집계표 시트도 함께 갱신되었습니다.');
+    })
+    .withFailureHandler(function (e) {
+      overlayOff();
+      $('btnXlsx').disabled = false;
+      toast(String(e.message || e));
+    })
+    .prepareExport(TOKEN, FILTER);
+});
+
+$('btnSheet').addEventListener('click', function () {
+  $('btnSheet').disabled = true;
+  google.script.run
+    .withSuccessHandler(function (u) {
+      $('btnSheet').disabled = false;
+      showLinkBox('구글시트 열기', u, '스프레드시트 열기',
+        '응답 원자료와 집계표가 들어 있는 파일입니다.');
+    })
+    .withFailureHandler(function (e) {
+      $('btnSheet').disabled = false;
+      toast(String(e.message || e));
+    })
+    .getSpreadsheetUrl(TOKEN);
+});
+
+$('hTitle').textContent = CFG.centerName + ' 강의평가 결과';
+</script>
+</body>
+</html>

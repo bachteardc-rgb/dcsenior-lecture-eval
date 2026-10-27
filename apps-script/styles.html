@@ -1,0 +1,220 @@
+<style>
+  :root {
+    --navy: #1f3864;
+    --navy-700: #2f5597;
+    --navy-100: #dae3f3;
+    --navy-50: #eef2fa;
+    --bg: #f4f6fb;
+    --card: #ffffff;
+    --text: #15223b;
+    --muted: #5b6983;
+    --line: #d4dbe8;
+    --ok: #1b7a46;
+    --warn: #b2540d;
+    --bad: #b3261e;
+    --radius: 14px;
+    --base: 19px;
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html { font-size: var(--base); }
+  html[data-fs="2"] { --base: 22px; }
+  html[data-fs="3"] { --base: 26px; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Malgun Gothic", "맑은 고딕", "Apple SD Gothic Neo",
+                 "Noto Sans KR", system-ui, sans-serif;
+    font-size: 1rem;
+    line-height: 1.6;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 0 0.5rem; }
+
+  /* ---------- 상단 바 ---------- */
+  .topbar {
+    position: sticky; top: 0; z-index: 20;
+    background: var(--navy); color: #fff;
+    padding: 0.7rem 0.9rem 0.6rem;
+  }
+  .topbar-inner { max-width: 620px; margin: 0 auto; }
+  .topbar h1 { margin: 0; font-size: 1.05rem; font-weight: 700; line-height: 1.35; }
+  .topbar .round { font-size: 0.8rem; opacity: 0.85; margin-top: 2px; }
+
+  .fsbar { display: flex; gap: 6px; align-items: center; margin-top: 8px; }
+  .fsbar span { font-size: 0.78rem; opacity: 0.85; margin-right: 2px; }
+  .fsbtn {
+    background: rgba(255,255,255,0.14); color: #fff;
+    border: 1px solid rgba(255,255,255,0.45);
+    border-radius: 8px; padding: 3px 11px; cursor: pointer;
+    font-family: inherit; line-height: 1.2;
+  }
+  .fsbtn[aria-pressed="true"] { background: #fff; color: var(--navy); font-weight: 700; }
+  .fsbtn.s1 { font-size: 0.8rem; }
+  .fsbtn.s2 { font-size: 0.95rem; }
+  .fsbtn.s3 { font-size: 1.15rem; }
+
+  /* ---------- 진행 표시 ---------- */
+  .progress { background: #c9d4e8; height: 8px; }
+  .progress > i { display: block; height: 100%; background: var(--navy-700); width: 0; transition: width .25s ease; }
+  .stepinfo {
+    max-width: 620px; margin: 0 auto; padding: 0.5rem 0.9rem 0;
+    font-size: 0.85rem; color: var(--muted); font-weight: 600;
+  }
+
+  /* ---------- 카드 ---------- */
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: var(--radius); margin: 0.9rem 0.7rem;
+    padding: 1.1rem 1rem; box-shadow: 0 1px 3px rgba(20,35,70,0.06);
+  }
+  .card h2 {
+    margin: 0 0 0.2rem; font-size: 1.15rem; color: var(--navy);
+    border-left: 5px solid var(--navy-700); padding-left: 0.55rem; line-height: 1.4;
+  }
+  .card .sub { color: var(--muted); font-size: 0.88rem; margin: 0.35rem 0 0; }
+
+  .notice {
+    background: var(--navy-50); border: 1px solid var(--navy-100);
+    border-radius: 10px; padding: 0.85rem 0.9rem; font-size: 0.93rem; line-height: 1.65;
+  }
+  .notice b { color: var(--navy); }
+  .notice ul { margin: 0.5rem 0 0; padding-left: 1.1rem; }
+  .notice li { margin-bottom: 0.25rem; }
+
+  /* ---------- 질문 ---------- */
+  .q { margin-top: 1.5rem; }
+  .q:first-of-type { margin-top: 0.9rem; }
+  .q > .label {
+    font-weight: 700; font-size: 1.04rem; line-height: 1.5;
+    display: flex; gap: 0.45rem; align-items: baseline;
+  }
+  .q > .label .num {
+    flex: none; min-width: 1.9rem; height: 1.9rem;
+    background: var(--navy-700); color: #fff; border-radius: 50%;
+    font-size: 0.82rem; display: inline-flex; align-items: center;
+    justify-content: center; font-weight: 700;
+  }
+  .q .hint { color: var(--warn); font-size: 0.86rem; margin: 0.3rem 0 0 2.35rem; }
+  .req { color: var(--bad); margin-left: 2px; }
+
+  /* ---------- 입력 ---------- */
+  input[type="text"], input[type="tel"], textarea, select {
+    width: 100%; font-family: inherit; font-size: 1rem; color: var(--text);
+    border: 2px solid var(--line); border-radius: 10px;
+    padding: 0.7rem 0.75rem; background: #fff; margin-top: 0.5rem;
+  }
+  textarea { min-height: 6.5rem; resize: vertical; line-height: 1.6; }
+  input:focus, textarea:focus, select:focus {
+    outline: none; border-color: var(--navy-700);
+    box-shadow: 0 0 0 3px rgba(47,85,151,0.16);
+  }
+
+  /* ---------- 선택지 ---------- */
+  .opts { display: grid; gap: 0.5rem; margin-top: 0.7rem; }
+  .opts.two { grid-template-columns: 1fr 1fr; }
+
+  .opt {
+    display: flex; align-items: center; gap: 0.7rem;
+    min-height: 3.1rem; padding: 0.6rem 0.85rem;
+    border: 2px solid var(--line); border-radius: 12px;
+    background: #fff; cursor: pointer; font-size: 1rem;
+    font-family: inherit; text-align: left; width: 100%;
+    color: var(--text); line-height: 1.4;
+  }
+  .opt .dot {
+    flex: none; width: 1.35rem; height: 1.35rem; border-radius: 50%;
+    border: 2px solid #9aa8c2; background: #fff; position: relative;
+  }
+  .opt[aria-pressed="true"] {
+    border-color: var(--navy-700); background: var(--navy-50); font-weight: 700;
+  }
+  .opt[aria-pressed="true"] .dot { border-color: var(--navy-700); }
+  .opt[aria-pressed="true"] .dot::after {
+    content: ""; position: absolute; inset: 3px;
+    border-radius: 50%; background: var(--navy-700);
+  }
+  .opt .meta { color: var(--muted); font-size: 0.84rem; font-weight: 400; }
+  .opt .tagok, .opt .tagredo {
+    display: inline-block; border-radius: 6px; padding: 0.05rem 0.4rem;
+    font-size: 0.75rem; font-weight: 700; margin-left: 0.2rem; white-space: nowrap;
+  }
+  .opt .tagok { background: #dcf0e4; color: var(--ok); }
+  .opt .tagredo { background: #fdeadd; color: var(--warn); }
+
+  .q.invalid > .label { color: var(--bad); }
+  .q.invalid .opts .opt, .q.invalid input, .q.invalid textarea { border-color: #e8a7a2; }
+  .errmsg { color: var(--bad); font-size: 0.88rem; margin-top: 0.4rem; font-weight: 600; display: none; }
+  .q.invalid .errmsg { display: block; }
+
+  /* ---------- 프로그램 선택 ---------- */
+  .daygroup { margin-top: 1.1rem; }
+  .daygroup > h3 {
+    margin: 0 0 0.5rem; font-size: 0.95rem; color: var(--navy);
+    background: var(--navy-100); border-radius: 8px;
+    padding: 0.3rem 0.65rem; display: inline-block;
+  }
+
+  /* ---------- 하단 버튼 ----------
+     화면에 고정하지 않습니다. 문항을 모두 지나 아래로 내려와야 보입니다. */
+  .navbar {
+    background: #fff; border-top: 2px solid var(--navy-100);
+    padding: 1.1rem 0.7rem calc(2.2rem + env(safe-area-inset-bottom));
+    margin-top: 0.6rem;
+  }
+  .navbar-inner { max-width: 620px; margin: 0 auto; display: flex; gap: 0.6rem; }
+  .btn {
+    flex: 1; min-height: 3.3rem; border-radius: 12px; border: 2px solid var(--navy-700);
+    font-family: inherit; font-size: 1.05rem; font-weight: 700; cursor: pointer;
+    background: var(--navy-700); color: #fff; line-height: 1.3;
+  }
+  .btn.ghost { background: #fff; color: var(--navy-700); }
+  .btn.wide { flex: 2; }
+  .btn:disabled { opacity: 0.55; cursor: default; }
+  .btn:active { transform: translateY(1px); }
+
+  /* ---------- 확인 / 완료 ---------- */
+  .review { border-top: 1px solid var(--line); }
+  .review dl { margin: 0; }
+  .review .row {
+    display: flex; gap: 0.7rem; padding: 0.55rem 0;
+    border-bottom: 1px dashed var(--line); font-size: 0.95rem;
+  }
+  .review .row dt { flex: none; width: 42%; color: var(--muted); margin: 0; }
+  .review .row dd { margin: 0; font-weight: 600; flex: 1; }
+
+  .done { text-align: center; padding: 2.2rem 1rem; }
+  .done .check {
+    width: 4.5rem; height: 4.5rem; border-radius: 50%; margin: 0 auto 1rem;
+    background: var(--ok); color: #fff; font-size: 2.3rem; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .done .check.warn { background: var(--warn); }
+  .done h2 { border: 0; padding: 0; font-size: 1.35rem; }
+
+  .hidden { display: none !important; }
+
+  .toast {
+    position: fixed; left: 50%; bottom: 1.6rem; transform: translateX(-50%);
+    background: #15223b; color: #fff; padding: 0.7rem 1.1rem; border-radius: 10px;
+    font-size: 0.95rem; z-index: 60; max-width: 90vw; text-align: center;
+    opacity: 0; pointer-events: none; transition: opacity .2s;
+  }
+  .toast.show { opacity: 0.96; }
+
+  .overlay {
+    position: fixed; inset: 0; background: rgba(244,246,251,0.9);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 80; flex-direction: column; gap: 0.9rem; font-weight: 700; color: var(--navy);
+  }
+  .spin {
+    width: 2.6rem; height: 2.6rem; border-radius: 50%;
+    border: 4px solid var(--navy-100); border-top-color: var(--navy-700);
+    animation: sp 0.8s linear infinite;
+  }
+  @keyframes sp { to { transform: rotate(360deg); } }
+</style>

@@ -9,7 +9,11 @@
 
 <div class="topbar">
   <div class="topbar-inner">
-    <h1 id="ttl">사회교육프로그램 강의평가</h1>
+    <div class="topline">
+      <h1 id="ttl">사회교육프로그램 강의평가</h1>
+      <button class="fstoggle" id="fstoggle" type="button"
+              aria-label="글자 크기 조절" aria-expanded="true">가</button>
+    </div>
     <div class="round" id="rnd"></div>
     <div class="fsbar">
       <span>글자 크기</span>
@@ -123,7 +127,29 @@ function attachPhoneFormat(inp) {
   inp.addEventListener('blur', function () { apply(true); });
 }
 
-/* ================= 글자 크기 ================= */
+/* ================= 글자 크기 =================
+ *
+ *  글자를 크게 하실수록 화면에 들어가는 내용이 줄어듭니다.
+ *  그래서 크기를 고르신 뒤에는 상단을 한 줄로 접어 자리를 비워드립니다.
+ *  오른쪽 [가] 버튼을 누르시면 언제든 다시 펴집니다.
+ * ============================================= */
+
+var fsTimer = null;
+
+function setTop(mode) {
+  document.documentElement.setAttribute('data-top', mode);
+  var t = $('fstoggle');
+  if (t) t.setAttribute('aria-expanded', String(mode !== 'min'));
+  store('top', mode);
+}
+
+function topIsMin() { return document.documentElement.getAttribute('data-top') === 'min'; }
+
+$('fstoggle').addEventListener('click', function () {
+  if (fsTimer) { clearTimeout(fsTimer); fsTimer = null; }
+  setTop(topIsMin() ? 'open' : 'min');
+});
+
 Array.prototype.forEach.call(document.querySelectorAll('.fsbtn'), function (b) {
   b.addEventListener('click', function () {
     document.documentElement.setAttribute('data-fs', b.getAttribute('data-fs'));
@@ -131,14 +157,23 @@ Array.prototype.forEach.call(document.querySelectorAll('.fsbtn'), function (b) {
       x.setAttribute('aria-pressed', String(x === b));
     });
     store('fs', b.getAttribute('data-fs'));
+
+    // 바로 접으면 바뀐 글씨를 못 보시므로 잠깐 두었다가 접습니다.
+    // 다른 크기를 또 눌러보시면 시간은 다시 시작됩니다.
+    if (fsTimer) clearTimeout(fsTimer);
+    fsTimer = setTimeout(function () { fsTimer = null; setTop('min'); }, 900);
   });
 });
+
 (function () {
   var f = load('fs');
   if (f) {
     var tb = document.querySelector('.fsbtn[data-fs="' + f + '"]');
     if (tb) tb.click();
   }
+  // 전에 한 번이라도 고르신 분은 처음부터 접은 채로 보여드립니다
+  if (fsTimer) { clearTimeout(fsTimer); fsTimer = null; }
+  setTop((f || load('top') === 'min') ? 'min' : 'open');
 })();
 
 /* ================= 공통 부품 ================= */
@@ -1019,7 +1054,13 @@ function advance() {
     render();
     return;
   }
-  if (step < STEPS.length - 1) { step++; render(); }
+  if (step < STEPS.length - 1) {
+    step++;
+    // 첫 화면을 지나면 상단은 접어둡니다 — 문항에 자리를 내어드립니다
+    if (fsTimer) { clearTimeout(fsTimer); fsTimer = null; }
+    setTop('min');
+    render();
+  }
 }
 
 $('btnPrev').addEventListener('click', function () {

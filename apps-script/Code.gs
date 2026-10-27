@@ -862,7 +862,24 @@ function readSheet_(name) {
  * 프로그램 목록을 '프로그램' 시트에서 읽습니다.
  * 시트가 없거나 비어 있으면 Config.gs 의 PROGRAMS 를 사용합니다.
  */
+/**
+ * 과목 목록. 저장할 때마다 호출되는데 그때마다 시트를 읽으면
+ * 여러 분이 한꺼번에 저장하실 때 그만큼 줄이 길어집니다.
+ * 60초 동안은 읽어둔 값을 다시 씁니다.
+ */
 function getPrograms() {
+  var cache = null;
+  try { cache = CacheService.getScriptCache(); } catch (e) {}
+  if (cache) {
+    var hit = cache.get('programs');
+    if (hit) { try { return JSON.parse(hit); } catch (e) {} }
+  }
+  var out = readPrograms_();
+  if (cache) { try { cache.put('programs', JSON.stringify(out), 60); } catch (e) {} }
+  return out;
+}
+
+function readPrograms_() {
   try {
     var sh = getSS_().getSheetByName(CONFIG.SHEET_PROGRAMS);
     if (!sh || sh.getLastRow() < 2) return PROGRAMS;
